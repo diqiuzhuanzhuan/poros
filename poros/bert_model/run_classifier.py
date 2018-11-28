@@ -17,9 +17,9 @@
 import collections
 import csv
 import os
-from . import modeling
-from . import optimization
-from . import tokenization
+from poros.bert_model import modeling
+from poros.bert_model import optimization
+from poros.bert_model import tokenization
 import tensorflow as tf
 
 
@@ -123,7 +123,7 @@ class JustClassifierDataProcessor(DataProcessor):
             guid = "%s-%s" % (set_type, i)
             if set_type == "test":
                 text_a = tokenization.convert_to_unicode(line[1])
-                label = "0"
+                label = self.labels[0]
             else:
                 text_a = tokenization.convert_to_unicode(line[1])
                 label = tokenization.convert_to_unicode(line[2])
@@ -351,13 +351,14 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
         logits = tf.nn.bias_add(logits, output_bias)
         probabilities = tf.nn.softmax(logits, axis=-1)
         log_probs = tf.nn.log_softmax(logits, axis=-1)
+        arg_max = tf.argmax(logits, axis=-1)
 
         one_hot_labels = tf.one_hot(labels, depth=num_labels, dtype=tf.float32)
 
         per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = tf.reduce_mean(per_example_loss)
 
-        return (loss, per_example_loss, logits, probabilities)
+        return (loss, per_example_loss, logits, probabilities, arg_max)
 
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
@@ -379,7 +380,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
         is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-        (total_loss, per_example_loss, logits, probabilities) = create_model(
+        (total_loss, per_example_loss, logits, probabilities, arg_max) = create_model(
             bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
             num_labels, use_one_hot_embeddings)
 
@@ -437,7 +438,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 scaffold_fn=scaffold_fn)
         else:
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
-                mode=mode, predictions=probabilities, scaffold_fn=scaffold_fn)
+                mode=mode, predictions=arg_max, scaffold_fn=scaffold_fn)
         return output_spec
 
     return model_fn
@@ -497,6 +498,10 @@ def input_fn_builder(features, seq_length, is_training, drop_remainder):
     return input_fn
 
 
+def queue_input_fn_builder(features, seq_length, is_training, drop_remainder):
+    pass
+
+
 # This function is not used by this file but is still used by the Colab and
 # people who depend on it.
 def convert_examples_to_features(examples, label_list, max_seq_length,
@@ -536,6 +541,7 @@ class IntentModel(object):
                  iterations_per_loop=1000,
                  num_train_epochs=5):
 
+        tf.set_random_seed(100)
         tf.logging.set_verbosity(tf.logging.INFO)
         self.is_train = is_train
         self.bert_config_file = bert_config_file
@@ -545,11 +551,11 @@ class IntentModel(object):
         self.warmup_proportion = warmup_proportion
         self.train_file = train_file
         self.dev_file = dev_file
-        self.init_checkpoint = init_checkpoint,
+        self.init_checkpoint = init_checkpoint
         self.train_batch_size = train_batch_size
         self.eval_batch_size = eval_batch_size
         self.predict_batch_size = predict_batch_size
-        self.save_checkpoints_steps=save_checkpoints_steps,
+        self.save_checkpoints_steps = save_checkpoints_steps
         self.iterations_per_loop = iterations_per_loop
         self.num_train_epochs = num_train_epochs
         self.learning_rate = learning_rate
@@ -583,6 +589,8 @@ class IntentModel(object):
                 num_shards=8,
                 per_host_input_for_training=is_per_host))
 
+        self.num_train_steps = None
+        self.num_warmup_steps = None
         if self.is_train:
             self.train_examples = self.processor.get_train_examples(self.train_file)
             self.num_train_steps = int(
@@ -656,7 +664,7 @@ class IntentModel(object):
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
     def predict(self, lines):
-        if not isinstance(list, lines):
+        if not isinstance(lines, list):
             lines = [lines]
         predict_examples = self.processor.get_test_examples_not_from_file(lines)
 
@@ -670,3 +678,31 @@ class IntentModel(object):
         result = self.estimator.predict(input_fn=predict_input_fn)
         tf.logging.info("{}".format(result))
         return result
+
+
+def main():
+    intent_model = IntentModel(
+        bert_config_file="./data/chinese_L-12_H-768_A-12/bert_config.json",
+        vocab_file="./data/chinese_L-12_H-768_A-12/vocab.txt",
+        output_dir="./output",
+        max_seq_length=512,
+        train_file="./data/train.csv",
+        dev_file="./data/dev.csv",
+        init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",
+        label_list=[0, 1, 2, 3]
+    )
+    res = intent_model.predict([["1", "你好"], ["2", "我好"]])
+    for i in res:
+        print("hello")
+        print(i)
+    import time
+    t1 = time.time()
+    res = intent_model.predict([["1", "你好"], ["2", "我好"]])
+    for i in res:
+        print(i)
+    t2 = time.time()
+    print(t2-t1)
+
+
+if __name__ == "__main__":
+    main()
