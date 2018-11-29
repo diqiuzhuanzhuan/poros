@@ -520,7 +520,7 @@ def convert_examples_to_features(examples, label_list, max_seq_length,
     return features
 
 
-class IntentModel(object):
+class SimpleClassifierModel(object):
 
     def __init__(self,
                  bert_config_file,
@@ -681,7 +681,7 @@ class IntentModel(object):
 
 
 def main():
-    intent_model = IntentModel(
+    model = SimpleClassifierModel(
         bert_config_file="./data/chinese_L-12_H-768_A-12/bert_config.json",
         vocab_file="./data/chinese_L-12_H-768_A-12/vocab.txt",
         output_dir="./output",
@@ -691,13 +691,13 @@ def main():
         init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",
         label_list=[0, 1, 2, 3]
     )
-    res = intent_model.predict([["1", "你好"], ["2", "我好"]])
+    res = model.predict([["1", "你好"], ["2", "我好"]])
     for i in res:
         print("hello")
         print(i)
     import time
     t1 = time.time()
-    res = intent_model.predict([["1", "你好"], ["2", "我好"]])
+    res = model.predict([["1", "你好"], ["2", "我好"]])
     for i in res:
         print(i)
     t2 = time.time()
