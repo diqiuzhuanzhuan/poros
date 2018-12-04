@@ -12,7 +12,9 @@ import collections
 class NumberAdapter(object):
 
     _data = collections.OrderedDict({
+        "个": -1,
         "零": 0,
+        "又": 0,
         "0": 0,
         "一": 1,
         "1": 1,
@@ -69,6 +71,8 @@ class NumberAdapter(object):
         guess_next_unit = 1
         for i, s in enumerate(text):
             t = cls._data[s]
+            if t < 0:
+                continue
             if t < 10:
                 last_actor = 10 * last_actor + t
             else:
@@ -94,7 +98,10 @@ if __name__ == "__main__":
         ("一百万零五千", 1005000),
         ("一八三零", 1830),
         ("3000", 3000),
-        ("五百", 500)
+        ("五百", 500),
+        ("五个百", 500),
+        ("五个亿", 500000000),
+        ("四千万又五十三", 40000053)
     ]
     for ele in test_data:
         print("expect is {}, actually is {}".format(ele[1], NumberAdapter.convert(ele[0])))
