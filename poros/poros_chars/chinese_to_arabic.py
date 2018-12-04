@@ -20,6 +20,8 @@ class NumberAdapter(object):
         "1": 1,
         "壹": 1,
         "二": 2,
+        "两": 2,
+        "俩": 2,
         "2": 2,
         "贰": 2,
         "三": 3,
@@ -52,6 +54,10 @@ class NumberAdapter(object):
         "万": 10000,
         "萬": 10000,
         "亿": 100000000,
+        "億": 100000000,
+        "兆": 1000000000000,
+        "点": -2,
+        ".": -2
     })
 
     def __init__(self):
@@ -69,22 +75,27 @@ class NumberAdapter(object):
         value = 0
         last_actor = 0
         guess_next_unit = 1
+        denominator_actor = 0
         for i, s in enumerate(text):
-            t = cls._data[s]
-            if t < 0:
+            t = cls._data.get(s, -1)
+            if t == -1:
                 continue
-            if t < 10:
+            if t == -2:
+                denominator_actor = 1
+            elif t < 10:
+                denominator_actor = 10 * denominator_actor
                 last_actor = 10 * last_actor + t
             else:
                 if last_actor == 0:
-                    value *= t
+                    value = (value or 1) * t
                 else:
-                    value += last_actor * t
+                    value += last_actor * t / (denominator_actor or 1)
                 last_actor = 0
+                denominator_actor = 0
             if i == len(text) - 2 and t > 10:
                 guess_next_unit = cls._data[s] // 10 or 1
         if last_actor:
-            value += last_actor * guess_next_unit
+            value += last_actor / (denominator_actor or 1) * guess_next_unit
         return value
 
 
@@ -101,7 +112,13 @@ if __name__ == "__main__":
         ("五百", 500),
         ("五个百", 500),
         ("五个亿", 500000000),
-        ("四千万又五十三", 40000053)
+        ("四千万又五十三", 40000053),
+        ("二点五万", 25000),
+        ("9.5万", 95000),
+        ("九.5万", 95000),
+        ("三十点四八", 30.48),
+        ("两点九", 2.9),
+        ("十万零三千六百零九", 103609)
     ]
     for ele in test_data:
         print("input is {}, expect is {}, actually is {}".format(ele[0], ele[1], NumberAdapter.convert(ele[0])))
