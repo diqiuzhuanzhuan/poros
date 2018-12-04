@@ -106,3 +106,4 @@ if __name__ == "__main__":
     for ele in test_data:
         print("expect is {}, actually is {}".format(ele[1], NumberAdapter.convert(ele[0])))
         assert(NumberAdapter.convert(ele[0]) == ele[1])
+    print("everything is ok? so good!\n~~I love you~~")
