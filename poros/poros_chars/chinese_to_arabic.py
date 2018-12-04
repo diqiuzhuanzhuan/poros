@@ -118,7 +118,10 @@ if __name__ == "__main__":
         ("九.5万", 95000),
         ("三十点四八", 30.48),
         ("两点九", 2.9),
-        ("十万零三千六百零九", 103609)
+        ("十万零三千六百零九", 103609),
+        ("一七六七四点四四", 17674.44),
+        ("两百三十千点五", 230000.5),
+        ("12.60", 12.60)
     ]
     for ele in test_data:
         print("input is {}, expect is {}, actually is {}".format(ele[0], ele[1], NumberAdapter.convert(ele[0])))
