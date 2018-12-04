@@ -104,6 +104,6 @@ if __name__ == "__main__":
         ("四千万又五十三", 40000053)
     ]
     for ele in test_data:
-        print("expect is {}, actually is {}".format(ele[1], NumberAdapter.convert(ele[0])))
+        print("input is {}, expect is {}, actually is {}".format(ele[0], ele[1], NumberAdapter.convert(ele[0])))
         assert(NumberAdapter.convert(ele[0]) == ele[1])
     print("everything is ok? so good!\n~~I love you~~")
