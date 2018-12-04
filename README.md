@@ -2,6 +2,19 @@
 This is a project for later lazy work!
 
 
+#Install
+命令行直接安装
+```bash
+pip install poros
+```
+从代码库安装
+```bash
+git clone https://github.com/diqiuzhuanzhuan/poros.git
+cd poros
+python setup install
+```
+
+
 Some code is from other people, and some is from me.
 
 # bert_model
@@ -32,7 +45,7 @@ usage:
 ```python
 from poros.poros_chars import chinese_to_arabic
 >>> print(chinese_to_arabic.NumberAdapter.convert("四千三百万"))
-430000000
+43000000
 
 ```
 

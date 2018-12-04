@@ -88,6 +88,8 @@ class NumberAdapter(object):
             else:
                 if last_actor == 0:
                     value = (value or 1) * t
+                elif (value > 0) and (value < t):
+                    value = (value + last_actor) * t
                 else:
                     value += last_actor * t / (denominator_actor or 1)
                 last_actor = 0
@@ -121,7 +123,12 @@ if __name__ == "__main__":
         ("十万零三千六百零九", 103609),
         ("一七六七四点四四", 17674.44),
         ("两百三十千点五", 230000.5),
-        ("12.60", 12.60)
+        ("12.60", 12.60),
+        ("零点四一四一四", 0.41414),
+        ("两五万五千点九", 255000.9),
+        ("一千零一万", 10010000),
+        ("两十五万五千", 255000),
+        ("两拾", 20)
     ]
     for ele in test_data:
         print("input is {}, expect is {}, actually is {}".format(ele[0], ele[1], NumberAdapter.convert(ele[0])))
