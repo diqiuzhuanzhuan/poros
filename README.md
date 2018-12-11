@@ -1,6 +1,6 @@
 
 This is a project for later lazy work!
-
+Only support for python3, ☹️, but maybe you can try in python2
 
 # Install
 命令行直接安装
