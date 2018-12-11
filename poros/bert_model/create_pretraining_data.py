@@ -405,15 +405,28 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
             trunc_tokens.pop()
 
 
-def create_data(input_file, output_file, vocab_file, do_lower_case=True):
+def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_seed=12345, max_seq_length=128,
+                max_predictions_per_seq=20, dupe_factor=10, masked_lm_prob=0.15, short_seq_prob=0.1):
     """
     :param input_file: Input raw text file (or comma-separated list of files).
     :param output_file: all data which has tfrecord format will be written into this file
     :param vocab_file:
     :param do_lower_case:
+    :param random_seed
+    :param max_seq_length
+    :param max_predictions_per_seq
+    :param dupe_factor
+    :param masked_lm_prob
+    :param short_seq_prob
     :return:
     """
     tf.logging.set_verbosity(tf.logging.INFO)
+    FLAGS.max_seq_length = max_seq_length
+    FLAGS.random_seed = random_seed
+    FLAGS.max_predictions_per_seq = max_predictions_per_seq
+    FLAGS.dupe_factor = dupe_factor
+    FLAGS.masked_lm_prob = masked_lm_prob
+    FLAGS.short_seq_prob = short_seq_prob
 
     tokenizer = tokenization.FullTokenizer(vocab_file=vocab_file, do_lower_case=do_lower_case)
 
