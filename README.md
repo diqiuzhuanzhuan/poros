@@ -2,7 +2,7 @@
 This is a project for later lazy work!
 
 
-#Install
+# Install
 命令行直接安装
 ```bash
 pip install poros
@@ -19,6 +19,22 @@ Some code is from other people, and some is from me.
 
 # bert_model
 usage:
+- create pretrain data
+```python
+from poros.bert_model import create_pretraining_data
+
+>>> create_pretraining_data.create_data(input_file="./test_data/sample_text.txt",
+output_file="./test_data/output", vocab_file="./test_data/vocab.txt")
+
+```
+- pretrain bert model
+```python
+from poros.bert_model import pretrain
+>>> pretrain.run(input_file="./test_data/output",  bert_config_file="./test_data/bert_config.json", 
+output_dir="./output")
+
+```
+
 - prepare a trained model, tell classifier model
 - prepare train.csv and test.csv, its format is like this: "id, text1, label"
 - init the model, the code is like below
