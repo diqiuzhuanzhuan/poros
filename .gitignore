@@ -4,3 +4,4 @@ build/
 dist/
 poros.egg-info/
 data
+output

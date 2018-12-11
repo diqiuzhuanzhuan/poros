@@ -454,7 +454,7 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
 
 
 if __name__ == "__main__":
-    create_data(input_file="./data/sample_text.txt", output_file="./data/output", vocab_file="./word.dict")
+    create_data(input_file="./test_data/sample_text.txt", output_file="./data/output", vocab_file="./test_data/vocab.txt")
 
     """ 
     flags.mark_flag_as_required("input_file")
