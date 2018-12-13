@@ -224,6 +224,21 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     return feature
 
 
+def convert_feature_to_tf_example(feature):
+    def create_int_feature(values):
+        f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+        return f
+
+    features = collections.OrderedDict()
+    features["input_ids"] = create_int_feature(feature.input_ids)
+    features["input_mask"] = create_int_feature(feature.input_mask)
+    features["segment_ids"] = create_int_feature(feature.segment_ids)
+    features["label_ids"] = create_int_feature([feature.label_id])
+
+    tf_example = tf.train.Example(features=tf.train.Features(feature=features))
+    return tf_example
+
+
 def file_based_convert_examples_to_features(
         examples, label_list, max_seq_length, tokenizer, output_file):
     """Convert a set of `InputExample`s to a TFRecord file."""
@@ -236,18 +251,8 @@ def file_based_convert_examples_to_features(
 
         feature = convert_single_example(ex_index, example, label_list,
                                          max_seq_length, tokenizer)
+        tf_example = convert_feature_to_tf_example(feature)
 
-        def create_int_feature(values):
-            f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
-            return f
-
-        features = collections.OrderedDict()
-        features["input_ids"] = create_int_feature(feature.input_ids)
-        features["input_mask"] = create_int_feature(feature.input_mask)
-        features["segment_ids"] = create_int_feature(feature.segment_ids)
-        features["label_ids"] = create_int_feature([feature.label_id])
-
-        tf_example = tf.train.Example(features=tf.train.Features(feature=features))
         writer.write(tf_example.SerializeToString())
 
 
@@ -409,6 +414,12 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                             init_string)
 
         output_spec = None
+        serving_key = tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
+        predictions = {
+            "classes": arg_max
+        }
+        export_outputs = {serving_key: tf.estimator.export.PredictOutput(predictions)}
+
         if mode == tf.estimator.ModeKeys.TRAIN:
 
             train_op = optimization.create_optimizer(
@@ -438,7 +449,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 scaffold_fn=scaffold_fn)
         else:
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
-                mode=mode, predictions=arg_max, scaffold_fn=scaffold_fn)
+                mode=mode, predictions=arg_max, scaffold_fn=scaffold_fn, export_outputs=export_outputs)
         return output_spec
 
     return model_fn
@@ -594,7 +605,7 @@ class SimpleClassifierModel(object):
         if self.is_train:
             self.train_examples = self.processor.get_train_examples(self.train_file)
             self.num_train_steps = int(
-                len(self.train_examples) / self.train_batch_size * self.num_train_epochs)
+                len(self.train_examples) / self.train_batch_size * self.num_train_epochs) or 1
             self.num_warmup_steps = int(self.num_train_steps * self.warmup_proportion)
 
         model_fn = model_fn_builder(
@@ -616,6 +627,45 @@ class SimpleClassifierModel(object):
             train_batch_size=self.train_batch_size,
             eval_batch_size=self.eval_batch_size,
             predict_batch_size=self.predict_batch_size)
+
+    def export_savedmodel(self, save_dir):
+        """
+
+        :param save_dir: saved path for model
+        :return:
+        """
+        tf.gfile.MakeDirs(save_dir)
+        feature_spec = {
+            "input_ids": tf.FixedLenFeature([self.max_seq_length], tf.int64),
+            "input_mask": tf.FixedLenFeature([self.max_seq_length], tf.int64),
+            "segment_ids": tf.FixedLenFeature([self.max_seq_length], tf.int64),
+            "label_ids": tf.FixedLenFeature([], tf.int64),
+        }
+        serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(feature_spec=feature_spec)
+        self.estimator._export_to_tpu = False
+        self.estimator.export_saved_model(export_dir_base=save_dir, serving_input_receiver_fn=serving_input_fn)
+
+    def export_savedmodel_rawinput(self, save_dir):
+        feature_spec = {
+            "input_text": tf.FixedLenFeature([], dtype=tf.string)
+        }
+
+        def serving_input_receiver_fn():
+            """An input_fn that expects a serialized tf.Example."""
+            from tensorflow.python.framework import dtypes
+            from tensorflow.python.ops import array_ops
+            from tensorflow.python.ops import parsing_ops
+            from tensorflow.python.estimator.export.export import ServingInputReceiver
+
+            serialized_tf_example = array_ops.placeholder(
+                dtype=dtypes.string,
+                shape=[None],
+                name='input_example_tensor')
+            receiver_tensors = {'examples': serialized_tf_example}
+            features = parsing_ops.parse_example(serialized_tf_example, feature_spec)
+            return ServingInputReceiver(features, receiver_tensors)
+
+        return serving_input_receiver_fn
 
     def train(self):
         train_file = os.path.join(self.output_dir, "train.tf_record")
@@ -682,6 +732,7 @@ class SimpleClassifierModel(object):
 
 def main():
     model = SimpleClassifierModel(
+        is_train=True,
         bert_config_file="./data/chinese_L-12_H-768_A-12/bert_config.json",
         vocab_file="./data/chinese_L-12_H-768_A-12/vocab.txt",
         output_dir="./output",
@@ -689,8 +740,9 @@ def main():
         train_file="./data/train.csv",
         dev_file="./data/dev.csv",
         init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",
-        label_list=[0, 1, 2, 3]
+        label_list=["0", "1", "2", "3"]
     )
+    model.train()
     res = model.predict([["1", "你好"], ["2", "我好"]])
     for i in res:
         print("hello")
@@ -702,6 +754,7 @@ def main():
         print(i)
     t2 = time.time()
     print(t2-t1)
+    model.export_savedmodel("./export")
 
 
 if __name__ == "__main__":

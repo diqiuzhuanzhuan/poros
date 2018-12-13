@@ -409,8 +409,6 @@ def main(_):
     if not FLAGS.do_train and not FLAGS.do_eval:
         raise ValueError("At least one of `do_train` or `do_eval` must be True.")
 
-
-
     bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
 
     tf.gfile.MakeDirs(FLAGS.output_dir)
@@ -506,8 +504,8 @@ def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predic
     FLAGS.save_checkpoints_steps = save_checkpoints_steps
     FLAGS.iterations_per_loop = iterations_per_loop
     FLAGS.max_eval_steps = max_eval_steps
-
     tf.app.run()
+
 
 if __name__ == "__main__":
     run(input_file="./data/output", bert_config_file="./test_data/bert_config.json", output_dir="./output", do_train=True)

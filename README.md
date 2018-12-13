@@ -34,7 +34,6 @@ from poros.bert_model import pretrain
 output_dir="./output")
 
 ```
-
 - prepare a trained model, tell classifier model
 - prepare train.csv and test.csv, its format is like this: "id, text1, label"
 - init the model, the code is like below
