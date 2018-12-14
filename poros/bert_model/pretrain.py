@@ -508,4 +508,4 @@ def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predic
 
 
 if __name__ == "__main__":
-    run(input_file="./data/output", bert_config_file="./test_data/bert_config.json", output_dir="./output", do_train=True)
+    run(input_file="./data/output", bert_config_file="./test_data/bert_config.json", num_train_steps=100, output_dir="./output", do_train=True)

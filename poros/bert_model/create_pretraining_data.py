@@ -455,21 +455,3 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
 
 if __name__ == "__main__":
     create_data(input_file="./test_data/sample_text.txt", output_file="./data/output", vocab_file="./test_data/vocab.txt")
-
-    """ 
-    flags.mark_flag_as_required("input_file")
-    flags.mark_flag_as_required("output_file")
-    flags.mark_flag_as_required("vocab_file")
-    FLAGS.input_file = "./sample_text.txt"
-    FLAGS.output_file = "./record"
-    FLAGS.vocab_file = "./vocab.txt"
-    # tf.app.run()
-    dataset = tf.data.TFRecordDataset(filenames=["./record"])
-    # dataset = dataset.map(lambda record: _decode(record)).batch(batch_size=32)
-    dataset = dataset.batch(32)
-    iterator = dataset.make_one_shot_iterator()
-    next_ele = iterator.get_next()
-    with tf.Session() as sess:
-        while True:
-            print(sess.run(next_ele))
-    """
