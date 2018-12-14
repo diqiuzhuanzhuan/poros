@@ -545,7 +545,7 @@ class SimpleClassifierModel(object):
                  eval_batch_size=32,
                  predict_batch_size=64,
                  is_train=False,
-                 label_list=[0, 1],
+                 label_list=["0", "1"],
                  learning_rate=5e-5,
                  warmup_proportion=0.1,
                  save_checkpoints_steps=1000,
