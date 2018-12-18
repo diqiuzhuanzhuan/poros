@@ -476,7 +476,9 @@ def main(_):
         master=_flag["master"],
         model_dir=_flag["output_dir"],
         save_checkpoints_steps=_flag["save_checkpoints_steps"],
-        log_step_count_steps=float["log_step_count_steps"],
+        log_step_count_steps=_flag["log_step_count_steps"],
+        session_config=tf.ConfigProto(
+            allow_soft_placement=True, log_device_placement=True),
         tpu_config=tf.contrib.tpu.TPUConfig(
             iterations_per_loop=_flag["iterations_per_loop"],
             num_shards=_flag["num_tpu_cores"],
