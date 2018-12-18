@@ -546,7 +546,7 @@ def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predic
     _flag["save_checkpoints_steps"] = save_checkpoints_steps
     _flag["iterations_per_loop"] = iterations_per_loop
     _flag["max_eval_steps"] = max_eval_steps
-    tf.app.run()
+    main(None)
 
 
 if __name__ == "__main__":
