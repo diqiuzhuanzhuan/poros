@@ -24,42 +24,69 @@ import random
 from poros.bert_model import tokenization
 import tensorflow as tf
 
-flags = tf.flags
 
-FLAGS = flags.FLAGS
+FLAGS = collections.namedtuple("FLAGS", ["input_file", "output_file", "vocab_file", "do_lower_case", "max_seq_length",
+                                         "max_predictions_per_seq", "random_seed", "dupe_factor", "masked_lm_prob",
+                                         "short_seq_prob"])
 
+"""
 flags.DEFINE_string("input_file", None,
                     "Input raw text file (or comma-separated list of files).")
+"""
+FLAGS.input_file = None
 
+"""
 flags.DEFINE_string(
     "output_file", None,
     "Output TF example file (or comma-separated list of files).")
+"""
+FLAGS.output_file = None
 
+"""
 flags.DEFINE_string("vocab_file", None,
                     "The vocabulary file that the BERT model was trained on.")
-
+"""
+FLAGS.vocab_file = None
+"""
 flags.DEFINE_bool(
     "do_lower_case", True,
     "Whether to lower case the input text. Should be True for uncased "
     "models and False for cased models.")
+"""
+FLAGS.do_lower_case = True
 
-flags.DEFINE_integer("max_seq_length", 128, "Maximum sequence length.")
+#flags.DEFINE_integer("max_seq_length", 128, "Maximum sequence length.")
+FLAGS.max_seq_length = 128
 
+"""
 flags.DEFINE_integer("max_predictions_per_seq", 20,
                      "Maximum number of masked LM predictions per sequence.")
-
+"""
+FLAGS.max_predictions_per_seq = 20
+"""
 flags.DEFINE_integer("random_seed", 12345, "Random seed for data generation.")
+"""
+FLAGS.random_seed = 12345
 
+"""
 flags.DEFINE_integer(
     "dupe_factor", 10,
     "Number of times to duplicate the input data (with different masks).")
+"""
+FLAGS.dupe_factor = 10
 
+"""
 flags.DEFINE_float("masked_lm_prob", 0.15, "Masked LM probability.")
+"""
+FLAGS.masked_lm_prob = 0.15
 
+"""
 flags.DEFINE_float(
     "short_seq_prob", 0.1,
     "Probability of creating sequences which are shorter than the "
     "maximum length.")
+"""
+FLAGS.short_seq_prob = 0.1
 
 
 class TrainingInstance(object):
