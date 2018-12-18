@@ -31,6 +31,8 @@ _flag["bert_config"] = None
 _flag["input_file"] = None
 _flag["output_dir"] = None
 
+_flag["log_step_count_steps"] = 100
+
 """
 flags.DEFINE_string(
     "bert_config_file", None,
@@ -474,6 +476,7 @@ def main(_):
         master=_flag["master"],
         model_dir=_flag["output_dir"],
         save_checkpoints_steps=_flag["save_checkpoints_steps"],
+        log_step_count_steps=float["log_step_count_steps"],
         tpu_config=tf.contrib.tpu.TPUConfig(
             iterations_per_loop=_flag["iterations_per_loop"],
             num_shards=_flag["num_tpu_cores"],
@@ -530,7 +533,7 @@ def main(_):
 
 def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predictions_per_seq=20, do_train=False, do_eval=True,
         train_batch_size=32, eval_batch_size=8, learning_rate=5e-5, num_train_steps=100000, num_warmup_steps=1000,
-        save_checkpoints_steps=1000, iterations_per_loop=1000, max_eval_steps=100):
+        save_checkpoints_steps=1000, iterations_per_loop=1000, max_eval_steps=100, log_step_count_steps=100):
     _flag["input_file"] = input_file
     _flag["bert_config_file"] = bert_config_file
     _flag["output_dir"] = output_dir
@@ -546,6 +549,7 @@ def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predic
     _flag["save_checkpoints_steps"] = save_checkpoints_steps
     _flag["iterations_per_loop"] = iterations_per_loop
     _flag["max_eval_steps"] = max_eval_steps
+    _flag["log_step_count_steps"] = log_step_count_steps
     main(None)
 
 
