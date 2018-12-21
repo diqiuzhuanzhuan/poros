@@ -481,4 +481,5 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
 
 
 if __name__ == "__main__":
+    tf.gfile.MakeDirs("./data")
     create_data(input_file="./test_data/sample_text.txt", output_file="./data/output", vocab_file="./test_data/vocab.txt")
