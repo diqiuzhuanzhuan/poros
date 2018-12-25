@@ -669,8 +669,13 @@ class SimpleClassifierModel(object):
 
     def train(self):
         train_file = os.path.join(self.output_dir, "train.tf_record")
-        file_based_convert_examples_to_features(
-            self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, train_file)
+
+        if not tf.gfile.Exists(train_file):
+            file_based_convert_examples_to_features(
+                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, train_file)
+        else:
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(train_file))
+
         tf.logging.info("***** Running training *****")
         tf.logging.info("  Num examples = %d", len(self.train_examples))
         tf.logging.info("  Batch size = %d", self.train_batch_size)
@@ -685,8 +690,11 @@ class SimpleClassifierModel(object):
     def eval(self):
         eval_examples = self.processor.get_dev_examples(self.dev_file)
         eval_file = os.path.join(self.output_dir, "eval.tf_record")
-        file_based_convert_examples_to_features(
-            eval_examples, self.label_list, self.max_seq_length, self.tokenizer, eval_file)
+        if not tf.gfile.Exists(eval_file):
+            file_based_convert_examples_to_features(
+                eval_examples, self.label_list, self.max_seq_length, self.tokenizer, eval_file)
+        else:
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(eval_file))
 
         tf.logging.info("***** Running evaluation *****")
         tf.logging.info("  Num examples = %d", len(eval_examples))
