@@ -77,7 +77,7 @@ class DataProcessor(object):
     def _read_csv(cls, input_file, quotechar=None):
         """Reads a tab separated value file."""
         with tf.gfile.Open(input_file, "r") as f:
-            reader = csv.reader(f, delimiter="\t", quotechar=quotechar)
+            reader = csv.reader(f, delimiter=",", quotechar=quotechar)
             lines = []
             for line in reader:
                 lines.append(line)
