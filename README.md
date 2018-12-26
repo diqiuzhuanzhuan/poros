@@ -35,7 +35,7 @@ output_dir="./output")
 
 ```
 - prepare a trained model, tell classifier model
-- prepare train.csv and test.csv, its format is like this: "id, text1, label"
+- prepare train.csv and test.csv, its format is like this: "id, text1, label", but remember no header!
 - init the model, the code is like below
 ````python
 from poros.bert_model.run_classifier import SimpleClassifierModel
