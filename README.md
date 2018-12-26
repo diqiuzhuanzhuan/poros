@@ -47,7 +47,7 @@ from poros.bert_model.run_classifier import SimpleClassifierModel
      train_file="./data/train.csv",                                           
      dev_file="./data/dev.csv",                                               
      init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",        
-     label_list=[0, 1, 2, 3]                                                  
+     label_list=["0", "1", "2", "3"]                                                  
     )
 ````
     
