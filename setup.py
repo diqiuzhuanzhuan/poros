@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.18",
+    version="0.0.19",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",
