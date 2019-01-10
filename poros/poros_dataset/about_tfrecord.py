@@ -50,3 +50,24 @@ def serialize_example(feature):
 
     example_proto = tf.train.Example(features=tf.train.Features(feature=feature))
     return example_proto.SerializeToString()
+
+
+def parse_example(example_proto, feature_description):
+    """
+
+    :param example_proto:
+    :param feature_description:
+    :return:
+    """
+    """
+    features_description may like this:
+    feature_description = {
+        'feature0': tf.FixedLenFeature([], tf.int64, default_value=0),
+        'feature1': tf.FixedLenFeature([], tf.int64, default_value=0),
+        'feature2': tf.FixedLenFeature([], tf.string, default_value=''),
+        'feature3': tf.FixedLenFeature([], tf.float32, default_value=0.0)
+    }
+    
+    """
+    # Parse the input tf.Example proto using the dictionary above.
+    return tf.parse_single_example(example_proto, feature_description)
