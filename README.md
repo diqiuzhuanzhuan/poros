@@ -50,6 +50,17 @@ from poros.bert_model.run_classifier import SimpleClassifierModel
      label_list=["0", "1", "2", "3"]                                                  
     )
 ````
+
+# poros_dataset
+some operations about tensor
+```python
+from poros.poros_dataset import about_tensor
+import tensorflow as tf
+>>> A = tf.constant(value=[0])
+>>> print(about_tensor.get_shape(A))
+[1]
+
+```
     
   
 # poros_chars
