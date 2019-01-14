@@ -438,10 +438,12 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             def metric_fn(per_example_loss, label_ids, logits):
                 predictions = tf.argmax(logits, axis=-1, output_type=tf.int32)
                 accuracy = tf.metrics.accuracy(label_ids, predictions)
+                recall = tf.metrics.recall(labels=label_ids, predictions=predictions)
                 loss = tf.metrics.mean(per_example_loss)
                 return {
                     "eval_accuracy": accuracy,
                     "eval_loss": loss,
+                    "recall": recall
                 }
 
             eval_metrics = (metric_fn, [per_example_loss, label_ids, logits])
