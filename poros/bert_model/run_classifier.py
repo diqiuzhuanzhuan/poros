@@ -20,6 +20,7 @@ import os
 from poros.bert_model import modeling
 from poros.bert_model import optimization
 from poros.bert_model import tokenization
+from poros.poros_loss import about_loss
 import tensorflow as tf
 
 
@@ -360,8 +361,10 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
 
         one_hot_labels = tf.one_hot(labels, depth=num_labels, dtype=tf.float32)
 
-        per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
-        loss = tf.reduce_mean(per_example_loss)
+        #per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+        loss = about_loss.focal_loss(log_probs, one_hot_labels)
+        per_example_loss = loss
+        #loss = tf.reduce_mean(per_example_loss)
 
         return (loss, per_example_loss, logits, probabilities, arg_max)
 
