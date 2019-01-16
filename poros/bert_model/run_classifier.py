@@ -595,11 +595,13 @@ class SimpleClassifierModel(object):
         tpu_cluster_resolver = None
 
         is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
+        distribution = tf.contrib.distribute.MirroredStrategy()
         self.run_config = tf.contrib.tpu.RunConfig(
             cluster=tpu_cluster_resolver,
             master=None,
             model_dir=self.output_dir,
             save_checkpoints_steps=self.save_checkpoints_steps,
+            train_distribute=distribution,
             tpu_config=tf.contrib.tpu.TPUConfig(
                 iterations_per_loop=self.iterations_per_loop,
                 num_shards=8,
