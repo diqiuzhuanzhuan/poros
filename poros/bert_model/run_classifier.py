@@ -258,7 +258,7 @@ def file_based_convert_examples_to_features(
 
 
 def file_based_input_fn_builder(input_file, seq_length, is_training,
-                                drop_remainder):
+                                drop_remainder, batch_size=8):
     """Creates an `input_fn` closure to be passed to TPUEstimator."""
 
     name_to_features = {
@@ -284,7 +284,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
 
     def input_fn(params):
         """The actual input function."""
-        batch_size = params["batch_size"]
+        #batch_size = params["batch_size"]
 
         # For training, we want a lot of parallel reading and shuffling.
         # For eval, we want no shuffling and parallel reading doesn't matter.
@@ -427,12 +427,19 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
             train_op = optimization.create_optimizer(
                 total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
-
+            output_spec = tf.estimator.EstimatorSpec(
+                mode=mode,
+                loss=total_loss,
+                train_op=train_op,
+                scaffold=scaffold_fn
+            )
+            """
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
                 mode=mode,
                 loss=total_loss,
                 train_op=train_op,
                 scaffold_fn=scaffold_fn)
+            """
         elif mode == tf.estimator.ModeKeys.EVAL:
 
             def metric_fn(per_example_loss, label_ids, logits):
@@ -447,14 +454,22 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 }
 
             eval_metrics = (metric_fn, [per_example_loss, label_ids, logits])
-            output_spec = tf.contrib.tpu.TPUEstimatorSpec(
+            output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=total_loss,
-                eval_metrics=eval_metrics,
-                scaffold_fn=scaffold_fn)
+                eval_metric_ops=eval_metrics,
+                scaffold=scaffold_fn)
         else:
+            output_spec = tf.estimator.EstimatorSpec(
+                mode=mode,
+                predictions=arg_max,
+                scaffold=scaffold_fn,
+                export_outputs=export_outputs
+            )
+            """
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
                 mode=mode, predictions=arg_max, scaffold_fn=scaffold_fn, export_outputs=export_outputs)
+            """
         return output_spec
 
     return model_fn
@@ -462,7 +477,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
 # This function is not used by this file but is still used by the Colab and
 # people who depend on it.
-def input_fn_builder(features, seq_length, is_training, drop_remainder):
+def input_fn_builder(features, seq_length, is_training, drop_remainder, batch_size=8):
     """Creates an `input_fn` closure to be passed to TPUEstimator."""
 
     all_input_ids = []
@@ -478,7 +493,7 @@ def input_fn_builder(features, seq_length, is_training, drop_remainder):
 
     def input_fn(params):
         """The actual input function."""
-        batch_size = params["batch_size"]
+        #batch_size = params["batch_size"]
 
         num_examples = len(features)
 
@@ -596,6 +611,12 @@ class SimpleClassifierModel(object):
 
         is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
         distribution = tf.contrib.distribute.MirroredStrategy()
+        self.run_config = tf.estimator.RunConfig(
+            save_checkpoints_steps=self.save_checkpoints_steps,
+            model_dir=self.output_dir,
+            train_distribute=distribution,
+        )
+        """
         self.run_config = tf.contrib.tpu.RunConfig(
             cluster=tpu_cluster_resolver,
             master=None,
@@ -606,6 +627,7 @@ class SimpleClassifierModel(object):
                 iterations_per_loop=self.iterations_per_loop,
                 num_shards=8,
                 per_host_input_for_training=is_per_host))
+        """
 
         self.num_train_steps = None
         self.num_warmup_steps = None
@@ -627,6 +649,11 @@ class SimpleClassifierModel(object):
 
         # If TPU is not available, this will fall back to normal Estimator on CPU
         # or GPU.
+        self.estimator = tf.estimator.Estimator(
+            model_fn=model_fn,
+            config=self.run_config
+        )
+        """
         self.estimator = tf.contrib.tpu.TPUEstimator(
             use_tpu=False,
             model_fn=model_fn,
@@ -634,6 +661,7 @@ class SimpleClassifierModel(object):
             train_batch_size=self.train_batch_size,
             eval_batch_size=self.eval_batch_size,
             predict_batch_size=self.predict_batch_size)
+        """
 
     def export_savedmodel(self, save_dir):
         """
@@ -691,7 +719,9 @@ class SimpleClassifierModel(object):
             input_file=train_file,
             seq_length=self.max_seq_length,
             is_training=True,
-            drop_remainder=True)
+            drop_remainder=True,
+            batch_size=self.train_batch_size
+        )
         self.estimator.train(input_fn=train_input_fn, max_steps=self.num_train_steps)
 
     def eval(self):
@@ -717,7 +747,9 @@ class SimpleClassifierModel(object):
             input_file=eval_file,
             seq_length=self.max_seq_length,
             is_training=False,
-            drop_remainder=eval_drop_remainder)
+            drop_remainder=eval_drop_remainder,
+            batch_size=self.eval_batch_size
+        )
 
         result = self.estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
 
@@ -734,7 +766,13 @@ class SimpleClassifierModel(object):
         predict_examples = self.processor.get_test_examples_not_from_file(lines)
 
         features = convert_examples_to_features(predict_examples, self.label_list, self.max_seq_length, self.tokenizer)
-        predict_input_fn = input_fn_builder(features=features, seq_length=self.max_seq_length, is_training=False, drop_remainder=False)
+        predict_input_fn = input_fn_builder(
+            features=features,
+            seq_length=self.max_seq_length,
+            is_training=False,
+            drop_remainder=False,
+            batch_size=self.predict_batch_size
+        )
 
         tf.logging.info("***** Running prediction*****")
         tf.logging.info("  Num examples = %d", len(predict_examples))
