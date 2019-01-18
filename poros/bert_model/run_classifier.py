@@ -609,11 +609,10 @@ class SimpleClassifierModel(object):
         tpu_cluster_resolver = None
 
         is_per_host = tf.contrib.tpu.InputPipelineConfig.PER_HOST_V2
-        distribution = tf.contrib.distribute.MirroredStrategy()
+        #distribution = tf.contrib.distribute.MirroredStrategy()
         self.run_config = tf.estimator.RunConfig(
             save_checkpoints_steps=self.save_checkpoints_steps,
-            model_dir=self.output_dir,
-            train_distribute=distribution,
+            model_dir=self.output_dir
         )
         """
         self.run_config = tf.contrib.tpu.RunConfig(
