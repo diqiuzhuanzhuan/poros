@@ -363,10 +363,9 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
 
         #per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = about_loss.focal_loss(log_probs, one_hot_labels)
-        loss, per_example_loss = tf.metrics.mean(loss)
-        #loss = tf.reduce_mean(per_example_loss)
+        average_loss, per_example_loss = tf.metrics.mean(loss, name="metrics_loss")
 
-        return (loss, per_example_loss, logits, probabilities, arg_max)
+        return (loss, average_loss, per_example_loss, logits, probabilities, arg_max)
 
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
@@ -388,7 +387,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
         is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-        (total_loss, per_example_loss, logits, probabilities, arg_max) = create_model(
+        (total_loss, average_loss, per_example_loss, logits, probabilities, arg_max) = create_model(
             bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
             num_labels, use_one_hot_embeddings)
 
@@ -429,7 +428,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
             output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
-                loss=total_loss,
+                loss=average_loss,
                 train_op=train_op,
                 scaffold=scaffold_fn
             )
@@ -791,20 +790,14 @@ def main():
         train_file="./data/train.csv",
         dev_file="./data/dev.csv",
         init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",
-        label_list=["0", "1", "2", "3"]
+        label_list=["0", "1", "2", "3"],
+        num_train_epochs=1000,
+        train_batch_size=8
     )
     model.train()
     res = model.predict([["1", "你好"], ["2", "我好"]])
-    for i in res:
-        print("hello")
-        print(i)
-    import time
-    t1 = time.time()
-    res = model.predict([["1", "你好"], ["2", "我好"]])
-    for i in res:
-        print(i)
-    t2 = time.time()
-    print(t2-t1)
+    print("prediction is {}".format(res))
+    model.eval()
     model.export_savedmodel("./export")
 
 
