@@ -589,6 +589,7 @@ class SimpleClassifierModel(object):
         self.num_train_epochs = num_train_epochs
         self.learning_rate = learning_rate
         self.label_list = label_list
+        self.train_file = os.path.join(self.output_dir, "train.tf_record")
 
         self.bert_config = modeling.BertConfig.from_json_file(self.bert_config_file)
 
@@ -699,21 +700,54 @@ class SimpleClassifierModel(object):
 
         return serving_input_receiver_fn
 
-    def train(self):
-        train_file = os.path.join(self.output_dir, "train.tf_record")
+    def train_and_evaluate(self, eval_steps=1000, throttle_secs=600):
 
-        if not tf.gfile.Exists(train_file):
+        if not tf.gfile.Exists(self.train_file):
             file_based_convert_examples_to_features(
-                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, train_file)
+                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_file)
         else:
-            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(train_file))
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_file))
+
+        train_input_fn = file_based_input_fn_builder(
+            input_file=self.train_file,
+            seq_length=self.max_seq_length,
+            is_training=True,
+            drop_remainder=True,
+            batch_size=self.train_batch_size
+        )
+        train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=self.num_train_steps)
+        eval_examples = self.processor.get_dev_examples(self.dev_file)
+        eval_file = os.path.join(self.output_dir, "eval.tf_record")
+        if not tf.gfile.Exists(eval_file):
+            file_based_convert_examples_to_features(
+                eval_examples, self.label_list, self.max_seq_length, self.tokenizer, eval_file)
+        else:
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(eval_file))
+        eval_drop_remainder = False
+        eval_input_fn = file_based_input_fn_builder(
+            input_file=eval_file,
+            seq_length=self.max_seq_length,
+            is_training=False,
+            drop_remainder=eval_drop_remainder,
+            batch_size=self.eval_batch_size
+        )
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, steps=eval_steps, throttle_secs=throttle_secs)
+        tf.estimator.train_and_evaluate(estimator=self.estimator, train_spec=train_spec, eval_spec=eval_spec)
+
+    def train(self):
+
+        if not tf.gfile.Exists(self.train_file):
+            file_based_convert_examples_to_features(
+                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_file)
+        else:
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_file))
 
         tf.logging.info("***** Running training *****")
         tf.logging.info("  Num examples = %d", len(self.train_examples))
         tf.logging.info("  Batch size = %d", self.train_batch_size)
         tf.logging.info("  Num steps = %d", self.num_train_steps)
         train_input_fn = file_based_input_fn_builder(
-            input_file=train_file,
+            input_file=self.train_file,
             seq_length=self.max_seq_length,
             is_training=True,
             drop_remainder=True,
