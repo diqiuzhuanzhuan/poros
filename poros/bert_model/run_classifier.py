@@ -428,7 +428,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                 total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
             output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
-                loss=average_loss,
+                loss=total_loss,
                 train_op=tf.group([train_op, average_loss]),
                 scaffold=scaffold_fn,
                 training_hooks=[hook]
