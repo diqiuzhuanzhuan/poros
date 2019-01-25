@@ -363,9 +363,8 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
 
         #per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = about_loss.focal_loss(log_probs, one_hot_labels)
-        average_loss, per_example_loss = tf.metrics.mean(loss, name="metrics_loss")
 
-        return (loss, average_loss, per_example_loss, logits, probabilities, arg_max)
+        return (loss, logits, probabilities, arg_max)
 
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
@@ -387,9 +386,10 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
         is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-        (total_loss, average_loss, per_example_loss, logits, probabilities, arg_max) = create_model(
+        (total_loss, logits, probabilities, arg_max) = create_model(
             bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
             num_labels, use_one_hot_embeddings)
+        _, average_loss = tf.metrics.mean(total_loss, name="average_loss")
 
         tvars = tf.trainable_variables()
         initialized_variable_names = {}
@@ -423,14 +423,15 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         export_outputs = {serving_key: tf.estimator.export.PredictOutput(predictions)}
 
         if mode == tf.estimator.ModeKeys.TRAIN:
-
+            hook = tf.train.LoggingTensorHook(tensors={"average_loss": "average_loss/update_op"}, every_n_iter=100)
             train_op = optimization.create_optimizer(
                 total_loss, learning_rate, num_train_steps, num_warmup_steps, use_tpu)
             output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=average_loss,
-                train_op=train_op,
-                scaffold=scaffold_fn
+                train_op=tf.group([train_op, average_loss]),
+                scaffold=scaffold_fn,
+                training_hooks=[hook]
             )
             """
             output_spec = tf.contrib.tpu.TPUEstimatorSpec(
@@ -451,7 +452,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                     "eval_loss": loss,
                     "recall": recall
                 }
-            eval_metrics = metric_fn(per_example_loss, label_ids, logits)
+            eval_metrics = metric_fn(total_loss, label_ids, logits)
             output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=total_loss,
@@ -589,7 +590,7 @@ class SimpleClassifierModel(object):
         self.num_train_epochs = num_train_epochs
         self.learning_rate = learning_rate
         self.label_list = label_list
-        self.train_file = os.path.join(self.output_dir, "train.tf_record")
+        self.train_tfrecord_file = os.path.join(self.output_dir, "train.tf_record")
 
         self.bert_config = modeling.BertConfig.from_json_file(self.bert_config_file)
 
@@ -702,14 +703,14 @@ class SimpleClassifierModel(object):
 
     def train_and_evaluate(self, eval_steps=1000, throttle_secs=600):
 
-        if not tf.gfile.Exists(self.train_file):
+        if not tf.gfile.Exists(self.train_tfrecord_file):
             file_based_convert_examples_to_features(
-                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_file)
+                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_tfrecord_file)
         else:
-            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_file))
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_tfrecord_file))
 
         train_input_fn = file_based_input_fn_builder(
-            input_file=self.train_file,
+            input_file=self.train_tfrecord_file,
             seq_length=self.max_seq_length,
             is_training=True,
             drop_remainder=True,
@@ -736,23 +737,24 @@ class SimpleClassifierModel(object):
 
     def train(self):
 
-        if not tf.gfile.Exists(self.train_file):
+        if not tf.gfile.Exists(self.train_tfrecord_file):
             file_based_convert_examples_to_features(
-                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_file)
+                self.train_examples, self.label_list, self.max_seq_length, self.tokenizer, self.train_tfrecord_file)
         else:
-            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_file))
+            tf.logging.warning("{} 已经存在，不重新生成，如果想要重新生成，请先删除该文件".format(self.train_tfrecord_file))
 
         tf.logging.info("***** Running training *****")
         tf.logging.info("  Num examples = %d", len(self.train_examples))
         tf.logging.info("  Batch size = %d", self.train_batch_size)
         tf.logging.info("  Num steps = %d", self.num_train_steps)
         train_input_fn = file_based_input_fn_builder(
-            input_file=self.train_file,
+            input_file=self.train_tfrecord_file,
             seq_length=self.max_seq_length,
             is_training=True,
             drop_remainder=True,
             batch_size=self.train_batch_size
         )
+
         self.estimator.train(input_fn=train_input_fn, max_steps=self.num_train_steps)
 
     def eval(self):
@@ -825,7 +827,7 @@ def main():
         dev_file="./data/dev.csv",
         init_checkpoint="./data/chinese_L-12_H-768_A-12/bert_model.ckpt",
         label_list=["0", "1", "2", "3"],
-        num_train_epochs=1000,
+        num_train_epochs=5,
         train_batch_size=8
     )
     model.train()
