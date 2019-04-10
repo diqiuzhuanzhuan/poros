@@ -81,12 +81,12 @@ class GanModel(object):
 
     def make_generator_optimizer(self):
         # 定义生成器的优化器
-        self.generator_optimizer = keras.optimizers.Adam(1e-6)
+        self.generator_optimizer = keras.optimizers.Adam(1e-4)
         return self.generator_optimizer
 
     def make_discriminator_optimizer(self):
         # 定义判别器的优化器
-        self.discriminator_optimizer = keras.optimizers.Adam(1e-6)
+        self.discriminator_optimizer = keras.optimizers.Adam(1e-4)
         return self.discriminator_optimizer
 
     def make_discriminator_loss(self, real, fake):
@@ -162,4 +162,4 @@ if __name__ == "__main__":
     tf.get_logger().setLevel(logging.INFO)
     model = GanModel()
     model.build()
-    model.train(epochs=400)
+    model.train(epochs=500)
