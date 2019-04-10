@@ -104,10 +104,16 @@ class GanModel(object):
         self.make_checkpoint_saver()
 
     def eval_generator(self):
-        noise = tf.random.normal([1, self.noise_dimension])
+        noise = tf.random.normal([9, self.noise_dimension])
         image = self.generator_model(noise, training=False)
+        precision = self.discriminator_model(image, training=False)
+        tf.get_logger().info("presion is\n {}".format(precision))
         image = image * 255/2 + 255/2
-        plt.imshow(image[0, :, :], cmap='gray')
+        fig = plt.figure(figsize=(3, 3))
+        for i in range(image.shape[0]):
+            plt.subplot(3, 3, i+1)
+            plt.imshow(image[i, :, :], cmap='gray')
+            plt.axis("off")
         plt.show()
 
     @tf.function
@@ -118,7 +124,7 @@ class GanModel(object):
             real_output = self.discriminator_model(images, training=True)
             fake_output = self.discriminator_model(generative_image, training=True)
 
-            self.gen_loss = self.make_generator_loss(generative_image)
+            self.gen_loss = self.make_generator_loss(fake_output)
 
             self.disc_loss = self.make_discriminator_loss(real_output, fake_output)
 
