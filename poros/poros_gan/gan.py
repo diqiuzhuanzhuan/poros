@@ -25,6 +25,7 @@ class GanModel(object):
         self.train_dataset = tf.data.Dataset.from_tensor_slices(self.train_x).shuffle(buffer_size=self.batch_size * 50).batch(self.batch_size)
 
     def make_generator_model(self):
+        # 定义生成器
         self.generator_model = keras.Sequential()
         self.generator_model.add(keras.layers.Dense(units=self.generator_layer_units[0], use_bias=True, input_shape=(100, )))
         self.generator_model.add(keras.layers.BatchNormalization())
@@ -53,6 +54,7 @@ class GanModel(object):
         return self.generator_model
 
     def make_discriminator_model(self):
+        # 定义判别器
         self.discriminator_model = keras.Sequential()
         self.discriminator_model.add(keras.layers.Reshape((784,), input_shape=(28, 28)))
         self.discriminator_model.add(keras.layers.Dense(units=self.discriminator_layer_units[0], use_bias=True))
@@ -73,18 +75,22 @@ class GanModel(object):
         return self.discriminator_model
 
     def make_generator_loss(self, input):
+        # 定义生成器的损失函数
         binary_cross_entropy = keras.losses.BinaryCrossentropy(from_logits=True)
         return binary_cross_entropy(y_true=tf.ones_like(input), y_pred=input)
 
     def make_generator_optimizer(self):
+        # 定义生成器的优化器
         self.generator_optimizer = keras.optimizers.Adam(1e-6)
         return self.generator_optimizer
 
     def make_discriminator_optimizer(self):
+        # 定义判别器的优化器
         self.discriminator_optimizer = keras.optimizers.Adam(1e-6)
         return self.discriminator_optimizer
 
     def make_discriminator_loss(self, real, fake):
+        # 定义判别器的损失函数
         binary_cross_entropy = keras.losses.BinaryCrossentropy(from_logits=True)
         real_loss = binary_cross_entropy(tf.ones_like(real), real)
         fake_loss = binary_cross_entropy(tf.zeros_like(fake), fake)
@@ -120,6 +126,7 @@ class GanModel(object):
 
     @tf.function
     def train_step(self, images):
+        # 使用tf.function装饰器来实现autograph
         noise = tf.random.normal([self.batch_size, self.noise_dimension])
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             generative_image = self.generator_model(noise, training=True)
