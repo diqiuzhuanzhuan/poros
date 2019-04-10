@@ -58,11 +58,13 @@ class GanModel(object):
         self.discriminator_model.add(keras.layers.Dense(units=self.discriminator_layer_units[0], use_bias=True))
         self.discriminator_model.add(keras.layers.BatchNormalization())
         self.discriminator_model.add(keras.layers.LeakyReLU())
+        self.discriminator_model.add(keras.layers.Dropout(0.4))
         assert self.discriminator_model.output_shape == (None, 256)
 
         self.discriminator_model.add(keras.layers.Dense(units=self.discriminator_layer_units[1], use_bias=True))
         self.discriminator_model.add(keras.layers.BatchNormalization())
         self.discriminator_model.add(keras.layers.LeakyReLU())
+        self.discriminator_model.add(keras.layers.Dropout(0.3))
         assert self.discriminator_model.output_shape == (None, 128)
 
         self.discriminator_model.add(keras.layers.Dense(units=1, activation="sigmoid"))
@@ -142,7 +144,7 @@ class GanModel(object):
                 gen_loss, disc_loss = self.train_step(batch_data)
                 tf.get_logger().info("gen_loss is {}, disc_loss is {}".format(gen_loss, disc_loss))
                 train_steps += 1
-                if train_steps % 1000 == 0:
+                if train_steps % 10000 == 0:
                     self.eval_generator()
             if epoch % 15 == 0:
                 self.checkpoint.save(file_prefix=self.checkpoint_prefix)
@@ -153,4 +155,4 @@ if __name__ == "__main__":
     tf.get_logger().setLevel(logging.INFO)
     model = GanModel()
     model.build()
-    model.train(epochs=100)
+    model.train(epochs=400)
