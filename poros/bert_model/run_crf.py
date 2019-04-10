@@ -19,6 +19,7 @@ import os
 import pickle
 
 import tensorflow as tf
+from seqeval import metrics
 from tensorflow.contrib.layers.python.layers import initializers
 
 from poros.bert_model import modeling
@@ -26,7 +27,7 @@ from poros.bert_model import optimization
 from poros.bert_model import tokenization
 from poros.metrics import tf_metrics
 from poros.sequence.lstm_crf_layer import BLSTM_CRF
-from seqeval import metrics
+
 logger = logging.getLogger('tensorflow')
 fh = logging.FileHandler('this_crf.log')
 logger.addHandler(fh)
@@ -197,15 +198,16 @@ class NerProcessor(DataProcessor):
 
     def get_labels(self):
         # return ["O", "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "X", "[CLS]", "[SEP]"]
-        return ['O', 'B-Amount', 'B-Anatomy', 'B-Disease', 'B-Drug', 'B-Duration', 'B-Frequency', 'B-Level', 'B-Method',
+        return ['O', "X", "[CLS]", "[SEP]",
+                'B-Amount', 'B-Anatomy', 'B-Disease', 'B-Drug', 'B-Duration', 'B-Frequency', 'B-Level', 'B-Method',
                 'B-Operation', 'B-Reason', 'B-SideEff', 'B-Symptom', 'B-Test', 'B-Test_Value', 'B-Treatment',
                 'E-Amount', 'E-Anatomy', 'E-Disease', 'E-Drug', 'E-Duration', 'E-Frequency', 'E-Level', 'E-Method',
                 'E-Operation', 'E-Reason', 'E-SideEff', 'E-Symptom', 'E-Test', 'E-Test_Value', 'E-Treatment',
                 'I-Amount', 'I-Anatomy', 'I-Disease', 'I-Drug', 'I-Duration', 'I-Frequency', 'I-Level', 'I-Method',
                 'I-Operation', 'I-Reason', 'I-SideEff', 'I-Symptom', 'I-Test', 'I-Test_Value', 'I-Treatment',
                 'S-Amount', 'S-Anatomy', 'S-Disease', 'S-Drug', 'S-Duration', 'S-Frequency', 'S-Level', 'S-Method',
-                'S-Operation', 'S-Reason', 'S-SideEff', 'S-Symptom', 'S-Test', 'S-Test_Value', 'S-Treatment',
-                "X", "[CLS]", "[SEP]"]
+                'S-Operation', 'S-Reason', 'S-SideEff', 'S-Symptom', 'S-Test', 'S-Test_Value', 'S-Treatment'
+                ]
 
     def _create_example(self, lines, set_type):
         examples = []
@@ -434,10 +436,17 @@ def create_model(bert_config, is_training, input_ids, input_mask,
     used = tf.sign(tf.abs(input_ids))
     lengths = tf.reduce_sum(used, reduction_indices=1)  # [batch_size] 大小的向量，包含了当前batch中的序列长度
 
-    blstm_crf = BLSTM_CRF(embedded_chars=embedding, hidden_unit=FLAGS.lstm_size, cell_type=FLAGS.cell,
+    blstm_crf = BLSTM_CRF(embedded_chars=embedding,
+                          hidden_unit=FLAGS.lstm_size,
+                          cell_type=FLAGS.cell,
                           num_layers=FLAGS.num_layers,
-                          dropout_rate=FLAGS.droupout_rate, initializers=initializers, num_labels=num_labels,
-                          seq_length=max_seq_length, labels=labels, lengths=lengths, is_training=is_training)
+                          dropout_rate=FLAGS.droupout_rate,
+                          initializers=initializers,
+                          num_labels=num_labels,
+                          sequence_max_length=max_seq_length,
+                          labels=labels,
+                          real_lengths=lengths,
+                          is_training=is_training)
     rst = blstm_crf.add_blstm_crf_layer(crf_only=True)
     return rst
 
@@ -506,10 +515,13 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             )
         elif mode == tf.estimator.ModeKeys.EVAL:
 
-            weight = tf.sequence_mask(FLAGS.max_seq_length)
-            precision = tf_metrics.precision(label_ids, pred_ids, num_labels, weights=weight, average='macro')
-            recall = tf_metrics.recall(label_ids, pred_ids, num_labels, weights=weight, average='macro')
-            f = tf_metrics.f1(label_ids, pred_ids, num_labels, weights=weight, average='macro')
+            # label 从 O:1 开始， 0 = pad 的 id
+            weights = tf.sequence_mask(
+                tf.reduce_sum(tf.cast(tf.greater(label_ids, 0), tf.int32), axis=1),
+                maxlen=FLAGS.max_seq_length)
+            precision = tf_metrics.precision(label_ids, pred_ids, num_labels, weights=weights, average='macro')
+            recall = tf_metrics.recall(label_ids, pred_ids, num_labels, weights=weights, average='macro')
+            f = tf_metrics.f1(label_ids, pred_ids, num_labels, weights=weights, average='macro')
 
             eval_metric_ops = {
                 "eval_precision": precision,
@@ -674,7 +686,7 @@ def main(_):
                                              compare_fn=_f1_greater)
 
         train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=num_train_steps)
-        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, exporters=exporter)
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, exporters=exporter, steps=None, throttle_secs=60)
 
         tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
@@ -726,14 +738,19 @@ def main(_):
 
         predictions = estimator.predict(input_fn=predict_input_fn)
 
-        sentences = [example.text for example in predict_examples]
-        ground_truths = [example.label for example in predict_examples]
+        # (FLAGS.max_seq_length-2) 是因为sequence转成 ids 后， 第一个是[CLS],最后一个是[SEP]所以最多有max_seq_length - 2有效字符
+        sentences = [example.text.split()[:(FLAGS.max_seq_length - 2)] for example in predict_examples]
+        ground_truths = [example.label.split()[:(FLAGS.max_seq_length - 2)] for example in predict_examples]
         prediction_labels = []
-        for prediction in predictions:
+        for idx, prediction in enumerate(predictions):
+            ground_truth_length = len(ground_truths[idx])
+            prediction = prediction[1:(ground_truth_length + 1)]
             prediction = [id2label.get(_id, 'O') for _id in prediction]
-            first_sep_index = prediction.index('[SEP]')
-            prediction = prediction[1:first_sep_index]
             prediction_labels.append(prediction)
+            if idx < 5:
+                print('sentence {}, {}'.format(idx, sentences[idx]))
+                print('ground_truth {}, {}'.format(idx, ground_truths[idx]))
+                print('predition {}, {}'.format(idx, prediction_labels[idx]))
 
         print(metrics.classification_report(ground_truths, prediction_labels))
 
@@ -767,7 +784,9 @@ def get_eval_fn(data_config, label_list, processor, tokenizer):
 
 def write_to_file(file_path, sentences, ground_truths, predictions):
     with open(file_path, 'w') as f:
-        for sentence, ground_truth, prediction in zip(sentences, ground_truths, predictions):
+        for idx, (sentence, ground_truth, prediction) in enumerate(zip(sentences, ground_truths, predictions)):
+            if idx < 1:
+                print(ground_truth, prediction)
             for word, truth, tag in zip(sentence, ground_truth, prediction):
                 f.write('{}\t{}\t{}\n'.format(word, truth, tag))
             f.write('\n')
