@@ -25,6 +25,7 @@ class GanModel(object):
         self.train_dataset = tf.data.Dataset.from_tensor_slices(self.train_x).shuffle(buffer_size=self.batch_size * 50).batch(self.batch_size)
 
     def make_generator_model(self):
+        # 定义生成器
         self.generator_model = keras.Sequential()
         self.generator_model.add(keras.layers.Dense(units=self.generator_layer_units[0], use_bias=True, input_shape=(100, )))
         self.generator_model.add(keras.layers.BatchNormalization())
@@ -53,16 +54,19 @@ class GanModel(object):
         return self.generator_model
 
     def make_discriminator_model(self):
+        # 定义判别器
         self.discriminator_model = keras.Sequential()
         self.discriminator_model.add(keras.layers.Reshape((784,), input_shape=(28, 28)))
         self.discriminator_model.add(keras.layers.Dense(units=self.discriminator_layer_units[0], use_bias=True))
         self.discriminator_model.add(keras.layers.BatchNormalization())
         self.discriminator_model.add(keras.layers.LeakyReLU())
+        self.discriminator_model.add(keras.layers.Dropout(0.4))
         assert self.discriminator_model.output_shape == (None, 256)
 
         self.discriminator_model.add(keras.layers.Dense(units=self.discriminator_layer_units[1], use_bias=True))
         self.discriminator_model.add(keras.layers.BatchNormalization())
         self.discriminator_model.add(keras.layers.LeakyReLU())
+        self.discriminator_model.add(keras.layers.Dropout(0.3))
         assert self.discriminator_model.output_shape == (None, 128)
 
         self.discriminator_model.add(keras.layers.Dense(units=1, activation="sigmoid"))
@@ -71,18 +75,22 @@ class GanModel(object):
         return self.discriminator_model
 
     def make_generator_loss(self, input):
+        # 定义生成器的损失函数
         binary_cross_entropy = keras.losses.BinaryCrossentropy(from_logits=True)
         return binary_cross_entropy(y_true=tf.ones_like(input), y_pred=input)
 
     def make_generator_optimizer(self):
+        # 定义生成器的优化器
         self.generator_optimizer = keras.optimizers.Adam(1e-6)
         return self.generator_optimizer
 
     def make_discriminator_optimizer(self):
+        # 定义判别器的优化器
         self.discriminator_optimizer = keras.optimizers.Adam(1e-6)
         return self.discriminator_optimizer
 
     def make_discriminator_loss(self, real, fake):
+        # 定义判别器的损失函数
         binary_cross_entropy = keras.losses.BinaryCrossentropy(from_logits=True)
         real_loss = binary_cross_entropy(tf.ones_like(real), real)
         fake_loss = binary_cross_entropy(tf.zeros_like(fake), fake)
@@ -118,6 +126,7 @@ class GanModel(object):
 
     @tf.function
     def train_step(self, images):
+        # 使用tf.function装饰器来实现autograph
         noise = tf.random.normal([self.batch_size, self.noise_dimension])
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             generative_image = self.generator_model(noise, training=True)
@@ -142,7 +151,7 @@ class GanModel(object):
                 gen_loss, disc_loss = self.train_step(batch_data)
                 tf.get_logger().info("gen_loss is {}, disc_loss is {}".format(gen_loss, disc_loss))
                 train_steps += 1
-                if train_steps % 1000 == 0:
+                if train_steps % 10000 == 0:
                     self.eval_generator()
             if epoch % 15 == 0:
                 self.checkpoint.save(file_prefix=self.checkpoint_prefix)
@@ -153,4 +162,4 @@ if __name__ == "__main__":
     tf.get_logger().setLevel(logging.INFO)
     model = GanModel()
     model.build()
-    model.train(epochs=100)
+    model.train(epochs=400)
