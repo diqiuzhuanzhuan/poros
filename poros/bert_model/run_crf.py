@@ -676,7 +676,7 @@ def main(_):
         train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, max_steps=num_train_steps)
         eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, exporters=exporter)
 
-        tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec, throttle_secs=60)
+        tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
         # estimator.train(input_fn=train_input_fn, max_steps=num_train_steps)
     if FLAGS.do_eval:
