@@ -24,7 +24,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "tensorflow",
-        "matplotlib"
+        "matplotlib",
+        "seqeval"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
