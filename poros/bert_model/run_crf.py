@@ -26,7 +26,7 @@ from poros.bert_model import optimization
 from poros.bert_model import tokenization
 from poros.metrics import tf_metrics
 from poros.sequence.lstm_crf_layer import BLSTM_CRF
-
+from seqeval import metrics
 logger = logging.getLogger('tensorflow')
 fh = logging.FileHandler('this_crf.log')
 logger.addHandler(fh)
@@ -734,6 +734,8 @@ def main(_):
             first_sep_index = prediction.index('[SEP]')
             prediction = prediction[1:first_sep_index]
             prediction_labels.append(prediction)
+
+        print(metrics.classification_report(ground_truths, prediction_labels))
 
         output_predict_file = os.path.join(FLAGS.output_dir, "label_test.txt")
         write_to_file(output_predict_file, sentences, ground_truths, predictions)
