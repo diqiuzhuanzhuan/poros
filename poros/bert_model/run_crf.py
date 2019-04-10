@@ -434,10 +434,17 @@ def create_model(bert_config, is_training, input_ids, input_mask,
     used = tf.sign(tf.abs(input_ids))
     lengths = tf.reduce_sum(used, reduction_indices=1)  # [batch_size] 大小的向量，包含了当前batch中的序列长度
 
-    blstm_crf = BLSTM_CRF(embedded_chars=embedding, hidden_unit=FLAGS.lstm_size, cell_type=FLAGS.cell,
+    blstm_crf = BLSTM_CRF(embedded_chars=embedding,
+                          hidden_unit=FLAGS.lstm_size,
+                          cell_type=FLAGS.cell,
                           num_layers=FLAGS.num_layers,
-                          dropout_rate=FLAGS.droupout_rate, initializers=initializers, num_labels=num_labels,
-                          seq_length=max_seq_length, labels=labels, lengths=lengths, is_training=is_training)
+                          dropout_rate=FLAGS.droupout_rate,
+                          initializers=initializers,
+                          num_labels=num_labels,
+                          sequence_max_length=max_seq_length,
+                          labels=labels,
+                          real_lengths=lengths,
+                          is_training=is_training)
     rst = blstm_crf.add_blstm_crf_layer(crf_only=True)
     return rst
 
