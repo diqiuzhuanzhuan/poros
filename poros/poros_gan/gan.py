@@ -102,7 +102,8 @@ class GanModel(object):
         self.checkpoint = tf.train.Checkpoint(generator_optimizer=self.generator_optimizer,
                                          discriminator_optimizer=self.discriminator_optimizer,
                                          generator=self.generator_model,
-                                         discriminator=self.discriminator_model)
+                                         discriminator=self.discriminator_model,
+                                        )
 
     def build(self):
         self.make_generator_model()
@@ -147,14 +148,14 @@ class GanModel(object):
         train_steps = 0
         self.checkpoint.restore(tf.train.latest_checkpoint(self.checkpoint_dir))
         for epoch in range(epochs):
+            self.train_dataset.repeat(1)
             for batch_data in self.train_dataset:
                 gen_loss, disc_loss = self.train_step(batch_data)
                 tf.get_logger().info("gen_loss is {}, disc_loss is {}".format(gen_loss, disc_loss))
                 train_steps += 1
                 if train_steps % 10000 == 0:
                     self.eval_generator()
-            if epoch % 15 == 0:
-                self.checkpoint.save(file_prefix=self.checkpoint_prefix)
+            self.checkpoint.save(file_prefix=self.checkpoint_prefix)
 
 
 if __name__ == "__main__":
