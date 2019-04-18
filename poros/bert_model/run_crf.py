@@ -516,17 +516,24 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         elif mode == tf.estimator.ModeKeys.EVAL:
 
             # label 从 O:1 开始， 0 = pad 的 id
+            pos_indices = [ind for ind in range(4, num_labels)]
             weights = tf.sequence_mask(
                 tf.reduce_sum(tf.cast(tf.greater(label_ids, 0), tf.int32), axis=1),
                 maxlen=FLAGS.max_seq_length)
-            precision = tf_metrics.precision(label_ids, pred_ids, num_labels, weights=weights, average='macro')
-            recall = tf_metrics.recall(label_ids, pred_ids, num_labels, weights=weights, average='macro')
-            f = tf_metrics.f1(label_ids, pred_ids, num_labels, weights=weights, average='macro')
+            precision = tf_metrics.precision(label_ids, pred_ids, num_labels, pos_indices=pos_indices, weights=weights,
+                                             average='macro')
+            recall = tf_metrics.recall(label_ids, pred_ids, num_labels, pos_indices=pos_indices, weights=weights,
+                                       average='macro')
+            f = tf_metrics.f1(label_ids, pred_ids, num_labels, pos_indices=pos_indices, weights=weights,
+                              average='macro')
+
+            accuracy = tf.metrics.accuracy(labels=label_ids, predictions=pred_ids, weights=weights)
 
             eval_metric_ops = {
                 "eval_precision": precision,
                 "eval_recall": recall,
                 "eval_f": f,
+                "eval_accuracy": accuracy,
             }
 
             output_spec = tf.estimator.EstimatorSpec(
@@ -608,7 +615,7 @@ def main(_):
 
     model_fn = model_fn_builder(
         bert_config=bert_config,
-        num_labels=len(label_list) + 1,
+        num_labels=len(label_list) + 1,  # 加 1 是为了 加入 pad
         init_checkpoint=FLAGS.init_checkpoint,
         learning_rate=FLAGS.learning_rate,
         num_train_steps=num_train_steps,
@@ -752,10 +759,10 @@ def main(_):
                 print('ground_truth {}, {}'.format(idx, ground_truths[idx]))
                 print('predition {}, {}'.format(idx, prediction_labels[idx]))
 
-        print(metrics.classification_report(ground_truths, prediction_labels))
+        # print(metrics.classification_report(ground_truths, prediction_labels))
 
         output_predict_file = os.path.join(FLAGS.output_dir, "label_test.txt")
-        write_to_file(output_predict_file, sentences, ground_truths, predictions)
+        write_to_file(output_predict_file, sentences, ground_truths, prediction_labels)
 
 
 def get_eval_fn(data_config, label_list, processor, tokenizer):
@@ -782,9 +789,9 @@ def get_eval_fn(data_config, label_list, processor, tokenizer):
     return eval_input_fn
 
 
-def write_to_file(file_path, sentences, ground_truths, predictions):
+def write_to_file(file_path, sentences, ground_truths, prediction_labels):
     with open(file_path, 'w') as f:
-        for idx, (sentence, ground_truth, prediction) in enumerate(zip(sentences, ground_truths, predictions)):
+        for idx, (sentence, ground_truth, prediction) in enumerate(zip(sentences, ground_truths, prediction_labels)):
             if idx < 1:
                 print(ground_truth, prediction)
             for word, truth, tag in zip(sentence, ground_truth, prediction):
