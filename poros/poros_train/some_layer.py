@@ -44,7 +44,7 @@ def dot_product_attention(q, k, v, scale=True, bias=None, dropout_rate=0.0):
     if bias:
         logits += bias
     if scale:
-        logits = logits / tf.sqrt(about_tensor.get_shape(v)[-1])
+        logits = logits / tf.sqrt(tf.cast(about_tensor.get_shape(v)[-1], tf.float32))
     weights = tf.nn.softmax(logits, name="attention_weights")
 
     return tf.matmul(weights, v)
