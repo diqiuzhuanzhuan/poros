@@ -7,6 +7,7 @@ email: diqiuzhuanzhuan@gmail.com
 """
 
 import tensorflow as tf
+from poros.poros_dataset import about_tensor
 
 
 def dropout(input_tensor, dropout_prob):
@@ -25,3 +26,28 @@ def dropout(input_tensor, dropout_prob):
 
     output = tf.nn.dropout(input_tensor, 1.0 - dropout_prob)
     return output
+
+
+def dot_product_attention(q, k, v, scale=True, bias=None, dropout_rate=0.0):
+    """
+
+    :param q:
+    :param k:
+    :param v:
+    :param bias:
+    :param dropout_rate:
+    :param type:
+    :return:
+    """
+    logits = tf.matmul(q, k, transpose_b=True)
+
+    if bias:
+        logits += bias
+    if scale:
+        logits = logits / tf.sqrt(about_tensor.get_shape(v)[-1])
+    weights = tf.nn.softmax(logits, name="attention_weights")
+
+    return tf.matmul(weights, v)
+
+
+
