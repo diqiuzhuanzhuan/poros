@@ -6,3 +6,4 @@ poros.egg-info/
 data
 output
 export
+*.pyc

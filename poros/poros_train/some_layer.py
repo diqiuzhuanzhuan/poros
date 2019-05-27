@@ -28,7 +28,7 @@ def dropout(input_tensor, dropout_prob):
     return output
 
 
-def dot_product_attention(q, k, v, scale=True, bias=None, dropout_rate=0.0):
+def dot_product_attention(q, k, v, scale=True, bias=None, mask=None):
     """
 
     :param q:
@@ -45,6 +45,8 @@ def dot_product_attention(q, k, v, scale=True, bias=None, dropout_rate=0.0):
         logits += bias
     if scale:
         logits = logits / tf.sqrt(tf.cast(about_tensor.get_shape(v)[-1], tf.float32))
+    if mask:
+        logits += mask * 1e-9
     weights = tf.nn.softmax(logits, name="attention_weights")
 
     return tf.matmul(weights, v)
