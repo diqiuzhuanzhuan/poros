@@ -39,15 +39,16 @@ def dot_product_attention(q, k, v, scale=True, bias=None, mask=None):
     :param type:
     :return:
     """
-    logits = tf.matmul(q, k, transpose_b=True)
+    with tf.variable_scope("dot_product_attention"):
+        logits = tf.matmul(q, k, transpose_b=True)
 
-    if bias:
-        logits += bias
-    if scale:
-        logits = logits / tf.sqrt(tf.cast(about_tensor.get_shape(v)[-1], tf.float32))
-    if mask:
-        logits += mask * 1e-9
-    weights = tf.nn.softmax(logits, name="attention_weights")
+        if bias:
+            logits += bias
+        if scale:
+            logits = logits / tf.sqrt(tf.cast(about_tensor.get_shape(v)[-1], tf.float32))
+        if mask:
+            logits += mask * 1e-9
+        weights = tf.nn.softmax(logits, name="attention_weights")
 
     return tf.matmul(weights, v)
 
