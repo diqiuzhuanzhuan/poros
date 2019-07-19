@@ -20,13 +20,14 @@ Some code is from other people, and some is from me.
 # bert_model
 usage:
 - create pretrain data
+
 ```python
 from poros.bert_model import create_pretraining_data
 
 >>> create_pretraining_data.create_data(input_file="./test_data/sample_text.txt",
 output_file="./test_data/output", vocab_file="./test_data/vocab.txt")
-
 ```
+
 - pretrain bert model
 ```python
 from poros.bert_model import pretrain
@@ -74,5 +75,4 @@ from poros.poros_chars import chinese_to_arabic
 43000000
 
 ```
-
 
