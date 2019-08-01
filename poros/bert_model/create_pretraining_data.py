@@ -202,7 +202,7 @@ def create_float_feature(values):
 
 def create_training_instances(input_files, tokenizer, max_seq_length,
                               dupe_factor, short_seq_prob, masked_lm_prob,
-                              max_predictions_per_seq, rng):
+                              max_predictions_per_seq, rng, constraint_mode=False):
     """Create `TrainingInstance`s from raw text."""
     all_documents = [[]]
 
@@ -238,7 +238,7 @@ def create_training_instances(input_files, tokenizer, max_seq_length,
             instances.extend(
                 create_instances_from_document(
                     all_documents, document_index, max_seq_length, short_seq_prob,
-                    masked_lm_prob, max_predictions_per_seq, vocab_words, rng))
+                    masked_lm_prob, max_predictions_per_seq, vocab_words, rng, constraint_mode))
 
     rng.shuffle(instances)
     return instances
@@ -246,7 +246,7 @@ def create_training_instances(input_files, tokenizer, max_seq_length,
 
 def create_instances_from_document(
         all_documents, document_index, max_seq_length, short_seq_prob,
-        masked_lm_prob, max_predictions_per_seq, vocab_words, rng):
+        masked_lm_prob, max_predictions_per_seq, vocab_words, rng, constraint_mode=False):
     """Creates `TrainingInstance`s for a single document."""
     document = all_documents[document_index]
 
@@ -300,10 +300,14 @@ def create_instances_from_document(
                     # corpora. However, just to be careful, we try to make sure that
                     # the random document is not the same as the document
                     # we're processing.
-                    for _ in range(10):
+                    for _ in range(20):
                         random_document_index = rng.randint(0, len(all_documents) - 1)
-                        if random_document_index != document_index:
-                            break
+                        if not constraint_mode:
+                            if random_document_index != document_index:
+                               break
+                        else:
+                            if all_documents[random_document_index] != all_documents[document_index]:
+                                break
 
                     random_document = all_documents[random_document_index]
                     random_start = rng.randint(0, len(random_document) - 1)
@@ -433,7 +437,7 @@ def truncate_seq_pair(tokens_a, tokens_b, max_num_tokens, rng):
 
 
 def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_seed=12345, max_seq_length=128,
-                max_predictions_per_seq=20, dupe_factor=10, masked_lm_prob=0.15, short_seq_prob=0.1):
+                max_predictions_per_seq=20, dupe_factor=10, masked_lm_prob=0.15, short_seq_prob=0.1, constraint_mode=False):
     """
     :param input_file: Input raw text file (or comma-separated list of files).
     :param output_file: all data which has tfrecord format will be written into this file
@@ -445,6 +449,7 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
     :param dupe_factor
     :param masked_lm_prob
     :param short_seq_prob
+    :param constraint_mode discriminant if two sentences is the same by compare the text(if true) or the text_id(if false)
     :return:
     """
     tf.logging.set_verbosity(tf.logging.INFO)
@@ -469,7 +474,7 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
     instances = create_training_instances(
         input_files, tokenizer, FLAGS.max_seq_length, FLAGS.dupe_factor,
         FLAGS.short_seq_prob, FLAGS.masked_lm_prob, FLAGS.max_predictions_per_seq,
-        rng)
+        rng, constraint_mode)
 
     output_files = output_file.split(",")
     tf.logging.info("*** Writing to output files ***")
@@ -482,4 +487,4 @@ def create_data(input_file, output_file, vocab_file, do_lower_case=True, random_
 
 if __name__ == "__main__":
     tf.gfile.MakeDirs("./data")
-    create_data(input_file="./test_data/sample_text.txt", output_file="./data/output", vocab_file="./test_data/vocab.txt")
+    create_data(input_file="./test_data/sample_text.txt", output_file="./data/output", vocab_file="./test_data/vocab.txt", constraint_mode=True)

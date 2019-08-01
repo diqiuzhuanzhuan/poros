@@ -19,7 +19,6 @@ import os
 import pickle
 
 import tensorflow as tf
-from seqeval import metrics
 from tensorflow.contrib.layers.python.layers import initializers
 
 from poros.bert_model import modeling
@@ -864,7 +863,7 @@ def adam_filter(model_path):
 if __name__ == "__main__":
     tf.logging.set_verbosity(tf.logging.DEBUG)
     flags.mark_flag_as_required('data_dir')
-    flags.mark_flag_as_required('vocab_file')
+    flage.mark_flag_as_required('vocab_file')
     flags.mark_flag_as_required('bert_config_file')
     flags.mark_flag_as_required('output_dir')
 

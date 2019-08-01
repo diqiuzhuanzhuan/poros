@@ -535,7 +535,7 @@ def main(_):
 
 def run(input_file, bert_config_file, output_dir, max_seq_length=128, max_predictions_per_seq=20, do_train=False, do_eval=True,
         train_batch_size=32, eval_batch_size=8, learning_rate=5e-5, num_train_steps=100000, num_warmup_steps=1000,
-        save_checkpoints_steps=1000, iterations_per_loop=1000, max_eval_steps=100, log_step_count_steps=100, alpha=1.0, beta=1.0):
+        save_checkpoints_steps=1000, iterations_per_loop=1000, max_eval_eteps=100, log_step_count_steps=100, alpha=1.0, beta=1.0):
     _flag["input_file"] = input_file
     _flag["bert_config_file"] = bert_config_file
     _flag["output_dir"] = output_dir
