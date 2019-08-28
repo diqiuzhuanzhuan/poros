@@ -863,7 +863,7 @@ def adam_filter(model_path):
 if __name__ == "__main__":
     tf.logging.set_verbosity(tf.logging.DEBUG)
     flags.mark_flag_as_required('data_dir')
-    flage.mark_flag_as_required('vocab_file')
+    flags.mark_flag_as_required('vocab_file')
     flags.mark_flag_as_required('bert_config_file')
     flags.mark_flag_as_required('output_dir')
 

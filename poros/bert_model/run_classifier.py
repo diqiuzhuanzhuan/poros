@@ -364,7 +364,7 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
         #per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = about_loss.focal_loss(log_probs, one_hot_labels)
 
-        return (loss, logits, probabilities, arg_max)
+        return (loss, logits, probabilities, arg_max, output_layer)
 
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
@@ -386,7 +386,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
 
         is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-        (total_loss, logits, probabilities, arg_max) = create_model(
+        (total_loss, logits, probabilities, arg_max, output_layer) = create_model(
             bert_config, is_training, input_ids, input_mask, segment_ids, label_ids,
             num_labels, use_one_hot_embeddings)
         _, average_loss = tf.metrics.mean(total_loss, name="average_loss")
@@ -418,7 +418,9 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         output_spec = None
         serving_key = tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
         predictions = {
-            "classes": arg_max
+            "classes": arg_max,
+            "prob": probabilities,
+            "output_layer": output_layer
         }
         export_outputs = {serving_key: tf.estimator.export.PredictOutput(predictions)}
 
@@ -461,7 +463,7 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
         else:
             output_spec = tf.estimator.EstimatorSpec(
                 mode=mode,
-                predictions=arg_max,
+                predictions=predictions,
                 scaffold=scaffold_fn,
                 export_outputs=export_outputs
             )
@@ -832,7 +834,7 @@ def main():
     )
     model.train()
     res = model.predict([["1", "你好"], ["2", "我好"]])
-    print("prediction is {}".format(res))
+    print("prediction is {}".format(list(res)))
     model.eval()
     model.export_savedmodel("./export")
 
