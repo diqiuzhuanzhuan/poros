@@ -813,7 +813,7 @@ class SimpleClassifierModel(object):
         tf.logging.info("  Num examples = %d", len(predict_examples))
         tf.logging.info("  Batch size = %d", self.predict_batch_size)
 
-        result = self.estimator.predict(input_fn=predict_input_fn)
+        result = self.estimator.predict(input_fn=predict_input_fn, yield_single_examples=True)
         tf.logging.info("{}".format(result))
         return result
 
@@ -833,8 +833,11 @@ def main():
         train_batch_size=8
     )
     model.train()
-    res = model.predict([["1", "你好"], ["2", "我好"]])
+    res = model.predict([["1", "李勇"], ["2", "保险"]])
     print("prediction is {}".format(list(res)))
+    res = list(res)
+    from sklearn.metrics.pairwise import cosine_similarity
+    print(cosine_similarity([res[0]["output_layer"], res[1]["output_layer"]]))
     model.eval()
     model.export_savedmodel("./export")
 
