@@ -657,12 +657,12 @@ def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
             if use_tpu:
 
                 def tpu_scaffold():
-                    tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
-                    return tf.train.Scaffold()
+                    tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                    return tf.compat.v1.train.Scaffold()
 
                 scaffold_fn = tpu_scaffold
             else:
-                tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+                tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
         logging.info("**** Trainable Variables ****")
         for var in tvars:
@@ -808,8 +808,7 @@ def main(_):
             "Cannot use sequence length %d because the BERT model "
             "was only trained up to sequence length %d" %
             (FLAGS.max_seq_length, bert_config.max_position_embeddings))
-
-    tf.gfile.MakeDirs(FLAGS.output_dir)
+    tf.io.gfile.makedirs(FLAGS.output_dir)
 
     task_name = FLAGS.task_name.lower()
 
@@ -923,7 +922,7 @@ def main(_):
         result = estimator.evaluate(input_fn=eval_input_fn, steps=eval_steps)
 
         output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
-        with tf.gfile.GFile(output_eval_file, "w") as writer:
+        with tf.io.gfile.GFile(output_eval_file, "w") as writer:
             logging.info("***** Eval results *****")
             for key in sorted(result.keys()):
                 logging.info("  %s = %s", key, str(result[key]))
@@ -961,7 +960,7 @@ def main(_):
         result = estimator.predict(input_fn=predict_input_fn)
 
         output_predict_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
-        with tf.gfile.GFile(output_predict_file, "w") as writer:
+        with tf.io.gfile.GFile(output_predict_file, "w") as writer:
             num_written_lines = 0
             logging.info("***** Predict results *****")
             for (i, prediction) in enumerate(result):
