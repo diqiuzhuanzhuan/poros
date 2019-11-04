@@ -209,14 +209,15 @@ class BertLayer(tf.keras.layers.Layer):
 
                 # Run the stacked transformer.
                 # `sequence_output` shape = [batch_size, seq_length, hidden_size].
-                transformer_layer = TransformerLayer(num_hidden_layers=self.config.num_hidden_layers,
-                                 num_attention_heads=self.config.num_attention_heads,
-                                 intermediate_size=self.config.intermediate_size,
-                                 intermediate_act_fn=get_activation(self.config.hidden_act),
-                                 hidden_dropout_prob=self.config.hidden_dropout_prob,
-                                 attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
-                                 initializer_range=self.config.initializer_range,
-                                 do_return_all_layers=True)
+                transformer_layer = TransformerLayer(
+                    num_hidden_layers=self.config.num_hidden_layers,
+                    num_attention_heads=self.config.num_attention_heads,
+                    intermediate_size=self.config.intermediate_size,
+                    intermediate_act_fn=get_activation(self.config.hidden_act),
+                    hidden_dropout_prob=self.config.hidden_dropout_prob,
+                    attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
+                    initializer_range=self.config.initializer_range,
+                    do_return_all_layers=True)
                 self.all_encoder_layers = transformer_layer(input_tensor=self.embedding_output,
                                                             attention_mask=attention_mask)
 
@@ -232,7 +233,8 @@ class BertLayer(tf.keras.layers.Layer):
                 first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
                 self.pooled_output = tf.keras.layers.Dense(self.config.hidden_size,
                                                            activation=tf.tanh,
-                                                           kernel_initializer=create_initializer(self.config.initializer_range))(first_token_tensor)
+                                                           kernel_initializer=create_initializer(
+                                                               self.config.initializer_range))(first_token_tensor)
         return self.sequence_output
 
     def get_pooled_output(self):
@@ -743,15 +745,15 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.batch_size = batch_size
         self.from_seq_length = from_seq_length
         self.to_seq_length = to_seq_length
-        self.wq= tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                                 activation=query_act,
-                                                 kernel_initializer=create_initializer(initializer_range=0.01))
+        self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
+                                        activation=query_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
         self.wk = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                               activation=key_act,
-                                               kernel_initializer=create_initializer(initializer_range=0.01))
+                                        activation=key_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
         self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                                 activation=value_act,
-                                                 kernel_initializer=create_initializer(initializer_range=0.01))
+                                        activation=value_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
 
     def transpose_for_scores(self, x):
         x = tf.reshape(x, shape=[self.batch_size, -1, self.num_attention_heads, self.size_per_head])
@@ -804,7 +806,7 @@ class AttentionLayer(tf.keras.layers.Layer):
         else:
             # `context_layer` = [B, F, N * H]
             context_layer = tf.reshape(context_layer,
-                                   [self.batch_size, -1, self.num_attention_heads * self.size_per_head])
+                                       [self.batch_size, -1, self.num_attention_heads * self.size_per_head])
 
         return context_layer
 
@@ -1024,7 +1026,7 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.hidden_dropout_prob = hidden_dropout_prob
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
         self.initializer_range = initializer_range
-        self.do_return_all_layers=do_return_all_layers
+        self.do_return_all_layers = do_return_all_layers
 
     def __call__(self, input_tensor, attention_mask):
         input_shape = get_shape_list(input_tensor, expected_rank=3)
@@ -1043,7 +1045,7 @@ class TransformerLayer(tf.keras.layers.Layer):
         # forth from a 3D tensor to a 2D tensor. Re-shapes are normally free on
         # the GPU/CPU but may not be free on the TPU, so we want to minimize them to
         # help the optimizer.
-        #prev_output = reshape_to_matrix(input_tensor)
+        # prev_output = reshape_to_matrix(input_tensor)
         prev_output = input_tensor
         attention_layer = AttentionLayer(
             num_attention_heads=self.num_attention_heads,
@@ -1064,9 +1066,9 @@ class TransformerLayer(tf.keras.layers.Layer):
                     attention_heads = []
                     with tf.name_scope("self"):
                         attention_head = attention_layer(q=layer_input,
-                                                        k=layer_input,
-                                                        v=layer_input,
-                                                        attention_mask=attention_mask)
+                                                         k=layer_input,
+                                                         v=layer_input,
+                                                         attention_mask=attention_mask)
                         attention_heads.append(attention_head)
 
                     attention_output = None
