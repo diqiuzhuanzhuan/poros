@@ -42,10 +42,15 @@ class TestModeling(unittest.TestCase):
         out, embedding_table = modeling.embedding_lookup(input_ids=input_ids, vocab_size=vocab_size, embedding_size=embedding_size)
         self.assertEqual(out.shape.as_list(), [batch_size, seq_length, embedding_size])
         self.assertEqual(embedding_table.shape.as_list(), [vocab_size, embedding_size])
-        print("embedding_table[0:2] is {}".format(embedding_table[0:2]))
+        print("embedding_table[0] is {}".format(embedding_table[0]))
 
     def test_embedding_postprocessor(self):
-        pass
+        batch_size = 8
+        seq_length = 128
+        embedding_size = 128
+        input_tensor = tf.initializers.TruncatedNormal(stddev=0.2)(shape=[batch_size, seq_length, embedding_size])
+        out_tensor = modeling.embedding_postprocessor(input_tensor=input_tensor)
+        self.assertEqual(out_tensor.shape.as_list(), [batch_size, seq_length, embedding_size])
 
     def test_create_attention_mask_from_input_mask(self):
         batch_size = 2
@@ -94,6 +99,21 @@ class TestModeling(unittest.TestCase):
         attention_mask = modeling.create_attention_mask_from_input_mask(input_tensor, tf.zeros(shape=[batch_size, to_seq_length]))
         output_tensor = transformer_layer(input_tensor=input_tensor, attention_mask=attention_mask)
         print("output_tensor shape is {}".format(output_tensor.shape))
+
+    def test_bert_layer(self):
+        vocab_size = 2000
+        hidden_size = 768
+        bert_config = modeling.BertConfig(vocab_size=vocab_size,
+                                          hidden_size=hidden_size)
+
+        bert_layer = modeling.BertLayer(config=bert_config,
+                           is_training=True)
+        batch_size = 8
+        seq_length = 128
+        input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
+        output_tensor = bert_layer(input_ids=input_ids)
+        self.assertEqual(output_tensor.shape.as_list(), [batch_size, seq_length, hidden_size])
+        print(output_tensor)
 
 
 if __name__ == '__main__':
