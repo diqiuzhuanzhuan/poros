@@ -77,9 +77,10 @@ class TestModeling(unittest.TestCase):
 
         attention_mask = tf.zeros(shape=[batch_size, from_seq_length, to_seq_length])
         self.assertEqual(attention_mask.shape, tf.TensorShape([batch_size, from_seq_length, to_seq_length]))
-        attention_layer = modeling.AttentionLayer(num_attention_heads=num_attention_head,
-                                                  size_per_head=size_per_head,
-                                                  batch_size=batch_size)
+        attention_layer = modeling.AttentionLayer(
+            num_attention_heads=num_attention_head,
+            size_per_head=size_per_head,
+            batch_size=batch_size)
 
         q = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, size_per_head]))
         k = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, to_seq_length, size_per_head]))
@@ -92,9 +93,10 @@ class TestModeling(unittest.TestCase):
         from_seq_length = 128
         to_seq_length = 128
         width = 768
-        transformer_layer = modeling.TransformerLayer(num_hidden_layers=12,
-                                  num_attention_heads=12,
-                                  intermediate_size=3072)
+        transformer_layer = modeling.TransformerLayer(
+            num_hidden_layers=12,
+            num_attention_heads=12,
+            intermediate_size=3072)
         input_tensor = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, width]))
         attention_mask = modeling.create_attention_mask_from_input_mask(input_tensor, tf.zeros(shape=[batch_size, to_seq_length]))
         output_tensor = transformer_layer(input_tensor=input_tensor, attention_mask=attention_mask)
@@ -103,11 +105,8 @@ class TestModeling(unittest.TestCase):
     def test_bert_layer(self):
         vocab_size = 2000
         hidden_size = 768
-        bert_config = modeling.BertConfig(vocab_size=vocab_size,
-                                          hidden_size=hidden_size)
-
-        bert_layer = modeling.BertLayer(config=bert_config,
-                           is_training=True)
+        bert_config = modeling.BertConfig(vocab_size=vocab_size,hidden_size=hidden_size)
+        bert_layer = modeling.BertLayer(config=bert_config, is_training=True)
         batch_size = 8
         seq_length = 128
         input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
