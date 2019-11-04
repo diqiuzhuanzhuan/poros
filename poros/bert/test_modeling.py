@@ -36,6 +36,15 @@ class TestModeling(unittest.TestCase):
     def test_embedding_lookup(self):
         batch_size = 8
         seq_length = 256
+        vocab_size = 200
+        embedding_size = 128
+        input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
+        out, embedding_table = modeling.embedding_lookup(input_ids=input_ids, vocab_size=vocab_size, embedding_size=embedding_size)
+        self.assertEqual(out.shape.as_list(), [batch_size, seq_length, embedding_size])
+        self.assertEqual(embedding_table.shape.as_list(), [vocab_size, embedding_size])
+        print("embedding_table[0:2] is {}".format(embedding_table[0:2]))
+
+    def test_embedding_postprocessor(self):
         pass
 
     def test_create_attention_mask_from_input_mask(self):
