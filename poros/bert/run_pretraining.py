@@ -110,8 +110,18 @@ flags.DEFINE_integer(
 
 class MaskedLmModel(tf.keras.Model):
 
-    def __init__(self):
+    def __init__(self, config, is_training):
         super(MaskedLmModel, self).__init__()
+        self.bert_layer = modeling.BertLayer(config=config, is_training=is_training)
+
+    def __call__(self, features):
+        input_ids = features["input_ids"]
+        input_mask = features["input_mask"]
+        segment_ids = features["segment_ids"]
+        masked_lm_positions = features["masked_lm_positions"]
+        masked_lm_ids = features["masked_lm_ids"]
+        masked_lm_weights = features["masked_lm_weights"]
+        next_sentence_labels = features["next_sentence_labels"]
 
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
