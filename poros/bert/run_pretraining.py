@@ -248,6 +248,13 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
 def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
                          label_ids, label_weights):
     """Get loss and log probs for the masked LM."""
+    """
+        input_tensor: shape is `[batch_size, seq_length, hidden_size]`
+        output_weights: shape is `[vocab_size, hidden_size]`
+        position: shape is `[batch_size, seq_length]`
+        label_ids: shape is `[batch_size, seq_length]`
+        label_weights: shape is `[batch_size, seq_length]`
+    """
     input_tensor = gather_indexes(input_tensor, positions)
 
     with tf.name_scope("cls/predictions"):
@@ -268,6 +275,7 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
             initial_value=tf.zeros_initializer()(shape=[bert_config.vocab_size]))
         logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
         logits = tf.nn.bias_add(logits, output_bias)
+        # log_probs tensor shape is `[batch_size * seq_length,  vocab_size]`
         log_probs = tf.nn.log_softmax(logits, axis=-1)
 
         label_ids = tf.reshape(label_ids, [-1])
@@ -282,9 +290,11 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
         # padding predictions.
         print(log_probs.shape)
         print(one_hot_labels.shape)
+        # per_example_loss tensor shape is `[batch_size * seq_length]`
         per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
         numerator = tf.reduce_sum(label_weights * per_example_loss)
         denominator = tf.reduce_sum(label_weights) + 1e-5
+        # loss tensor shape is `[]`
         loss = numerator / denominator
 
     return (loss, per_example_loss, log_probs)
@@ -292,6 +302,9 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
 
 def get_next_sentence_output(bert_config, input_tensor, labels):
     """Get loss and log probs for the next sentence prediction."""
+    """ bert_config: a BertConfig instance of BertConfig 
+        input_tensor: shape is [batch_size, hidden_size] 
+    """
 
     # Simple binary classification. Note that 0 is "next sentence" and 1 is
     # "random sentence". This weight matrix is not used after pre-training.
@@ -321,6 +334,8 @@ def get_next_sentence_output(bert_config, input_tensor, labels):
         one_hot_labels = tf.one_hot(labels, depth=2, dtype=tf.float32)
         per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
         loss = tf.reduce_mean(per_example_loss)
+        # loss shape: [], per_example_loss shape [batch_size]
+        # log_probs shape: [batch_size, 2]
         return (loss, per_example_loss, log_probs)
 
 

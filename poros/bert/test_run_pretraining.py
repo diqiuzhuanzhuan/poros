@@ -40,7 +40,6 @@ class TestRunPretraining(unittest.TestCase):
     def test_get_next_sentence_output(self):
         bert_config = modeling.BertConfig(vocab_size=1000)
         batch_size = 8
-        seq_length = 128
         hidden_size = bert_config.hidden_size
         input_tensor = tf.initializers.TruncatedNormal(stddev=0.02)(shape=[batch_size, hidden_size])
         labels = tf.random.uniform(maxval=2, minval=0, shape=[batch_size, 1], dtype=tf.int32)
@@ -49,6 +48,10 @@ class TestRunPretraining(unittest.TestCase):
             input_tensor=input_tensor,
             labels=labels
         )
-        print(log_probs)
+        self.assertEqual(loss.shape.as_list(), [])
+        self.assertEqual(per_example_loss.shape.as_list(), [batch_size])
+        self.assertEqual(log_probs.shape.as_list(), [batch_size, 2])
 
 
+if __name__ == "__main__":
+    unittest.main()
