@@ -52,6 +52,33 @@ class TestRunPretraining(unittest.TestCase):
         self.assertEqual(per_example_loss.shape.as_list(), [batch_size])
         self.assertEqual(log_probs.shape.as_list(), [batch_size, 2])
 
+    def test_bert_pretrain_model(self):
+        bert_config = modeling.BertConfig(vocab_size=1000)
+        max_seq_length = 128
+        max_predictions_per_seq = 20
+        batch_size = 8
+        features = {
+            "input_ids": tf.random.uniform(maxval=100, minval=0, shape=[batch_size, max_seq_length],dtype=tf.int32),
+            "input_mask": tf.random.uniform(maxval=2, minval=0, shape=[batch_size, max_seq_length], dtype=tf.int32),
+            "segment_ids": tf.concat([tf.zeros(shape=[batch_size, 60], dtype=tf.int32),
+                                      tf.zeros(shape=[batch_size, max_seq_length - 60], dtype=tf.int32)], axis=-1),
+            "masked_lm_positions": tf.random.uniform(
+                maxval=max_seq_length, minval=0, shape=[batch_size, max_predictions_per_seq], dtype=tf.int32),
+            "masked_lm_ids": tf.random.uniform(
+                maxval=max_seq_length, minval=0, shape=[batch_size, max_predictions_per_seq], dtype=tf.int32),
+            "masked_lm_weights": tf.initializers.TruncatedNormal(stddev=0.02)(shape=[batch_size, max_predictions_per_seq]),
+            "next_sentence_labels": tf.random.uniform(maxval=2, minval=0, shape=[batch_size, 1], dtype=tf.int32)
+        }
+        bert_pretrain_model = run_pretraining.BertPretrainModel(
+            config=bert_config,
+            is_training=True,
+            init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12"
+        )
+        bert_pretrain_model(features=features)
+        bert_pretrain_model(features=features)
+        bert_pretrain_model(features=features)
+        bert_pretrain_model(features=features)
+
 
 if __name__ == "__main__":
     unittest.main()

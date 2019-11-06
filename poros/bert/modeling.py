@@ -159,7 +159,8 @@ class BertLayer(tf.keras.layers.Layer):
             config.attention_probs_dropout_prob = 0.0
         self.config = config
 
-    def __call__(self, input_ids,
+    def __call__(self,
+                 input_ids,
                  input_mask=None,
                  token_type_ids=None,
                  use_one_hot_embeddings=False,
@@ -235,7 +236,7 @@ class BertLayer(tf.keras.layers.Layer):
                                                            activation=tf.tanh,
                                                            kernel_initializer=create_initializer(
                                                                self.config.initializer_range))(first_token_tensor)
-        return self.sequence_output
+        return self.pooled_output
 
     def get_pooled_output(self):
         return self.pooled_output

@@ -108,11 +108,44 @@ flags.DEFINE_integer(
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
 
-class MaskedLmModel(tf.keras.Model):
+class BertPretrainModel(tf.keras.Model):
 
-    def __init__(self, config, is_training):
-        super(MaskedLmModel, self).__init__()
+    def __init__(self, config, is_training, init_checkpoint=None, use_one_hot_embeddings=False):
+        super(BertPretrainModel, self).__init__()
+        self.bert_config = config
         self.bert_layer = modeling.BertLayer(config=config, is_training=is_training)
+        self.use_one_hot_embeddings = use_one_hot_embeddings
+        self.use_tpu = False
+        self.init_checkpoint = init_checkpoint
+
+    def init_from_checkpiont(self):
+        if not self.init_checkpoint:
+            return
+
+        tvars = tf.compat.v1.trainable_variables()
+        initialized_variable_names = {}
+        scaffold_fn = None
+        if self.init_checkpoint:
+            (assignment_map, initialized_variable_names
+             ) = modeling.get_assignment_map_from_checkpoint(tvars, self.init_checkpoint)
+            if self.use_tpu:
+
+                def tpu_scaffold():
+                    tf.compat.v1.train.init_from_checkpoint(self.init_checkpoint, assignment_map)
+                    return tf.compat.v1.train.Scaffold()
+
+                scaffold_fn = tpu_scaffold
+            else:
+                tf.compat.v1.train.init_from_checkpoint(self.init_checkpoint, assignment_map)
+
+        logging.info("**** Trainable Variables ****")
+        for var in tvars:
+            init_string = ""
+            if var.name in initialized_variable_names:
+                init_string = ", *INIT_FROM_CKPT*"
+            logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+                         init_string)
+
 
     def __call__(self, features):
         input_ids = features["input_ids"]
@@ -122,6 +155,40 @@ class MaskedLmModel(tf.keras.Model):
         masked_lm_ids = features["masked_lm_ids"]
         masked_lm_weights = features["masked_lm_weights"]
         next_sentence_labels = features["next_sentence_labels"]
+        bert_layer_output = self.bert_layer(
+            input_ids=input_ids,
+            input_mask=input_mask,
+            token_type_ids=segment_ids,
+            use_one_hot_embeddings=self.use_one_hot_embeddings
+        )
+        masked_lm_input = self.bert_layer.get_sequence_output()
+        masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = \
+            get_masked_lm_output(
+                bert_config=self.bert_config,
+                input_tensor=masked_lm_input,
+                output_weights=self.bert_layer.get_embedding_table(),
+                positions=masked_lm_positions,
+                label_ids=masked_lm_ids,
+                label_weights=masked_lm_weights)
+
+        print(masked_lm_loss)
+        print(masked_lm_example_loss)
+        print(masked_lm_log_probs)
+
+        (next_sentence_loss, next_sentence_example_loss, next_sentence_log_probs) = \
+            get_next_sentence_output(
+                bert_config=self.bert_config,
+                input_tensor=bert_layer_output,
+                labels=next_sentence_labels)
+        print(next_sentence_loss)
+        print(next_sentence_example_loss)
+        print(next_sentence_log_probs)
+        total_loss = masked_lm_loss + next_sentence_loss
+        print(total_loss)
+        self.add_loss(total_loss)
+        self.init_from_checkpiont()
+
+        return bert_layer_output
 
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
