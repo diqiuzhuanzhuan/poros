@@ -159,12 +159,12 @@ class BertLayer(tf.keras.layers.Layer):
             config.attention_probs_dropout_prob = 0.0
         self.config = config
 
-    def __call__(self,
-                 input_ids,
-                 input_mask=None,
-                 token_type_ids=None,
-                 use_one_hot_embeddings=False,
-                 scope="bert"):
+    def call(self,
+             input_ids,
+             input_mask=None,
+             token_type_ids=None,
+             scope="bert",
+             use_one_hot_embeddings=False):
 
         input_shape = get_shape_list(input_ids, expected_rank=2)
         batch_size = input_shape[0]
@@ -219,8 +219,8 @@ class BertLayer(tf.keras.layers.Layer):
                     attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
                     initializer_range=self.config.initializer_range,
                     do_return_all_layers=True)
-                self.all_encoder_layers = transformer_layer(input_tensor=self.embedding_output,
-                                                            attention_mask=attention_mask)
+
+                self.all_encoder_layers = transformer_layer(self.embedding_output, attention_mask)
 
             self.sequence_output = self.all_encoder_layers[-1]
             # The "pooler" converts the encoded sequence tensor of shape
@@ -495,6 +495,7 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
 
     assignment_map = collections.OrderedDict()
     for x in init_vars:
+        print(x)
         (name, var) = (x[0], x[1])
         if name not in name_to_variable:
             continue
@@ -525,7 +526,6 @@ def dropout(input_tensor, dropout_prob):
 
 def layer_norm(input_tensor, name=None):
     """Run layer normalization on the last dimension of the tensor."""
-
     return tf.keras.layers.LayerNormalization(epsilon=0.00001, name=name)(input_tensor)
 
 
@@ -677,7 +677,6 @@ def embedding_postprocessor(input_tensor,
             position_embeddings = tf.reshape(position_embeddings,
                                              position_broadcast_shape)
             output += position_embeddings
-
     output = layer_norm_and_dropout(output, dropout_prob)
     return output
 
@@ -761,7 +760,7 @@ class AttentionLayer(tf.keras.layers.Layer):
         # shape is [B, N, F, H]
         return tf.transpose(x, [0, 2, 1, 3])
 
-    def __call__(self, q, k, v, attention_mask=None):
+    def call(self, q, k, v, attention_mask=None):
         # Scalar dimensions referenced here:
         #   B = batch size (number of sequences)
         #   F = `from_tensor` sequence length
@@ -1029,7 +1028,9 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.initializer_range = initializer_range
         self.do_return_all_layers = do_return_all_layers
 
-    def __call__(self, input_tensor, attention_mask):
+    def call(self, input_tensor, attention_mask):
+        #input_tensor = features["input_tensor"]
+        #attention_mask = features["attention_mask"]
         input_shape = get_shape_list(input_tensor, expected_rank=3)
         batch_size = input_shape[0]
         seq_length = input_shape[1]
@@ -1066,10 +1067,10 @@ class TransformerLayer(tf.keras.layers.Layer):
                 with tf.name_scope("attention"):
                     attention_heads = []
                     with tf.name_scope("self"):
-                        attention_head = attention_layer(q=layer_input,
-                                                         k=layer_input,
-                                                         v=layer_input,
-                                                         attention_mask=attention_mask)
+                        attention_head = attention_layer(layer_input,
+                                                         layer_input,
+                                                         layer_input,
+                                                         attention_mask)
                         attention_heads.append(attention_head)
 
                     attention_output = None
@@ -1349,3 +1350,10 @@ def assert_rank(tensor, expected_rank, name=None):
             "For the tensor `%s` , the actual rank "
             "`%d` (shape = %s) is not equal to the expected rank `%s`" %
             (name, actual_rank, str(tensor.shape), str(expected_rank)))
+
+
+if __name__ == "__main__":
+    features = tf.keras.Input([784], dtype=tf.float32)
+    #features = tf.initializers.TruncatedNormal()(shape=[8, 784])
+    a = tf.keras.layers.LayerNormalization(epsilon=0.00001)(features)
+    print(a)

@@ -110,7 +110,7 @@ flags.DEFINE_integer(
 
 class BertPretrainModel(tf.keras.Model):
 
-    def __init__(self, config, is_training, init_checkpoint=None, use_one_hot_embeddings=False):
+    def __init__(self, config, is_training, init_checkpoint=None, use_one_hot_embeddings=False, **kwargs):
         super(BertPretrainModel, self).__init__()
         self.bert_config = config
         self.bert_layer = modeling.BertLayer(config=config, is_training=is_training)
@@ -146,7 +146,6 @@ class BertPretrainModel(tf.keras.Model):
             logging.info("  name = %s, shape = %s%s", var.name, var.shape,
                          init_string)
 
-
     def __call__(self, features):
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
@@ -171,18 +170,11 @@ class BertPretrainModel(tf.keras.Model):
                 label_ids=masked_lm_ids,
                 label_weights=masked_lm_weights)
 
-        print(masked_lm_loss)
-        print(masked_lm_example_loss)
-        print(masked_lm_log_probs)
-
         (next_sentence_loss, next_sentence_example_loss, next_sentence_log_probs) = \
             get_next_sentence_output(
                 bert_config=self.bert_config,
                 input_tensor=bert_layer_output,
                 labels=next_sentence_labels)
-        print(next_sentence_loss)
-        print(next_sentence_example_loss)
-        print(next_sentence_log_probs)
         total_loss = masked_lm_loss + next_sentence_loss
         print(total_loss)
         self.add_loss(total_loss)
@@ -365,8 +357,6 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
         # short to have the maximum number of predictions). The `label_weights`
         # tensor has a value of 1.0 for every real prediction and 0.0 for the
         # padding predictions.
-        print(log_probs.shape)
-        print(one_hot_labels.shape)
         # per_example_loss tensor shape is `[batch_size * seq_length]`
         per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
         numerator = tf.reduce_sum(label_weights * per_example_loss)

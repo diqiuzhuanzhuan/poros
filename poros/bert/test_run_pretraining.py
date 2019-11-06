@@ -69,15 +69,23 @@ class TestRunPretraining(unittest.TestCase):
             "masked_lm_weights": tf.initializers.TruncatedNormal(stddev=0.02)(shape=[batch_size, max_predictions_per_seq]),
             "next_sentence_labels": tf.random.uniform(maxval=2, minval=0, shape=[batch_size, 1], dtype=tf.int32)
         }
+        """
+        features = {
+            "input_ids": tf.keras.Input(shape=[max_seq_length], dtype=tf.int32, name="input_ids"),
+            "input_mask": tf.keras.Input(shape=[max_seq_length], dtype=tf.int32, name="input_mask"),
+            "segment_ids": tf.keras.Input(shape=[max_seq_length], dtype=tf.int32, name="segment_ids"),
+            "masked_lm_positions": tf.keras.Input(shape=[max_predictions_per_seq], dtype=tf.int32, name="masked_lm_positions"),
+            "masked_lm_ids": tf.keras.Input(shape=[max_predictions_per_seq], dtype=tf.int32, name="masked_lm_ids"),
+            "masked_lm_weights": tf.keras.Input(shape=[max_predictions_per_seq], dtype=tf.float32, name="masked_lm_weights"),
+            "next_sentence_labels": tf.keras.Input(shape=[1], dtype=tf.int32, name="next_sentence_labels")
+        }
+        """
         bert_pretrain_model = run_pretraining.BertPretrainModel(
             config=bert_config,
             is_training=True,
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12"
         )
-        bert_pretrain_model(features=features)
-        bert_pretrain_model(features=features)
-        bert_pretrain_model(features=features)
-        bert_pretrain_model(features=features)
+        bert_pretrain_model(features)
 
 
 if __name__ == "__main__":

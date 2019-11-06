@@ -33,6 +33,15 @@ class TestModeling(unittest.TestCase):
             get_shape = None
         self.assertEqual(get_shape, [])
 
+    def test_layer_norm_and_dropout(self):
+        input_tensor = tf.random.uniform(shape=[8, 128])
+        drop_prob = 0.1
+        input_tensor = tf.keras.Input(shape=[128], dtype=tf.float32)
+        output_tensor = modeling.layer_norm_and_dropout(input_tensor, drop_prob)
+        print(input_tensor)
+        print(output_tensor)
+        self.assertEqual(input_tensor.shape.as_list(), output_tensor.shape.as_list())
+
     def test_embedding_lookup(self):
         batch_size = 8
         seq_length = 256
@@ -99,7 +108,7 @@ class TestModeling(unittest.TestCase):
             intermediate_size=3072)
         input_tensor = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, width]))
         attention_mask = modeling.create_attention_mask_from_input_mask(input_tensor, tf.zeros(shape=[batch_size, to_seq_length]))
-        output_tensor = transformer_layer(input_tensor=input_tensor, attention_mask=attention_mask)
+        output_tensor = transformer_layer(input_tensor, attention_mask)
         print("output_tensor shape is {}".format(output_tensor.shape))
 
     def test_bert_layer(self):
@@ -110,8 +119,15 @@ class TestModeling(unittest.TestCase):
         batch_size = 8
         seq_length = 128
         input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
-        output_tensor = bert_layer(input_ids=input_ids)
-        self.assertEqual(output_tensor.shape.as_list(), [batch_size, seq_length, hidden_size])
+        #input_ids = tf.keras.Input(shape=[seq_length], dtype=tf.int32)
+        features = {
+            "input_ids": input_ids,
+            "input_mask": None,
+            "token_type_ids": None,
+            "scope": "bert"
+        }
+        output_tensor = bert_layer(input_ids, input_mask=None, token_type_ids=None)
+        self.assertEqual(output_tensor.shape.as_list(), [batch_size, hidden_size])
         print(output_tensor)
 
 
