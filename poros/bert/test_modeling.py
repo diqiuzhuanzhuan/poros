@@ -53,6 +53,35 @@ class TestModeling(unittest.TestCase):
         self.assertEqual(embedding_table.shape.as_list(), [vocab_size, embedding_size])
         print("embedding_table[0] is {}".format(embedding_table[0]))
 
+    def test_embedding_lookup_layer(self):
+        vocab_size = 1000
+        embedding_size = 128
+        batch_size = 8
+        seq_length = 12
+        use_one_hot_embeddings = False
+        embedding_lookup_layer = modeling.EmbeddingLookupLayer(vocab_size=vocab_size, embedding_size=embedding_size)
+        print(embedding_lookup_layer.trainable_variables)
+        input_ids = tf.random.uniform(maxval=vocab_size, minval=0, shape=[batch_size, seq_length], dtype=tf.int32)
+        output, embedding_table = embedding_lookup_layer(input_ids, use_one_hot_embeddings)
+        self.assertEqual(output.shape.as_list(), [batch_size, seq_length, embedding_size])
+        self.assertEqual(embedding_table.shape.as_list(), [vocab_size, embedding_size])
+
+    def test_embedding_postprocessor_layer(self):
+        embedding_size = 768
+        max_position_embedding = 512
+        embedding_postprocessor_layer = modeling.EmbeddingPostprocessorLayer(
+            embedding_size=embedding_size,
+            max_position_embeddings=max_position_embedding
+        )
+        print(embedding_postprocessor_layer.trainable_variables)
+        batch_size = 8
+        seq_length = 128
+        input_tensor = tf.random.uniform(shape=[batch_size, seq_length, embedding_size])
+        output = embedding_postprocessor_layer(
+            input_tensor, None
+        )
+        self.assertEqual(output.shape.as_list(), input_tensor.shape.as_list())
+
     def test_embedding_postprocessor(self):
         batch_size = 8
         seq_length = 128
