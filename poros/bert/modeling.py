@@ -637,6 +637,7 @@ class EmbeddingPostprocessorLayer(tf.keras.layers.Layer):
         self.use_token_type = use_token_type
         self.use_position_embeddings = use_position_embeddings
         self.token_type_vocab_size = token_type_vocab_size
+        self.embedding_size = embedding_size
         self.max_position_embeddings=512
         if self.use_token_type:
             self.token_type_table = tf.Variable(
@@ -656,12 +657,17 @@ class EmbeddingPostprocessorLayer(tf.keras.layers.Layer):
         seq_length = input_shape[1]
         width = input_shape[2]
         output = input_tensor
+        tf.debugging.assert_equal(
+            tf.constant(value=width, dtype=tf.int32), tf.constant(value=self.embedding_size, dtype=tf.int32),
+            message="the dimension of input tensor is not equal to the embedding size, "
+                    "input_tensor is {}, embedding size is {}".format(width, self.embedding_size)
+        )
 
         if self.use_token_type:
             flat_token_type_ids = tf.reshape(token_type_ids, [-1])
             one_hot_ids = tf.one_hot(flat_token_type_ids, depth=self.token_type_vocab_size)
             token_type_embeddings = tf.matmul(one_hot_ids, self.token_type_table)
-            token_type_embeddings = tf.reshape(token_type_embeddings, [batch_size, self.seq_length, self.embed])
+            token_type_embeddings = tf.reshape(token_type_embeddings, [batch_size, seq_length, width])
             output += token_type_embeddings
 
         if self.use_position_embeddings:
@@ -843,14 +849,20 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.from_seq_length = from_seq_length
         self.to_seq_length = to_seq_length
         self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=query_act,
+                                        activation=query_act, name="query",
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wk = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=key_act,
+                                        activation=key_act, name="key",
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=value_act,
+                                        activation=value_act, name="value",
                                         kernel_initializer=create_initializer(initializer_range=0.01))
+
+    def build(self, input_wq_shape, input_wk_shape, input_wv_shape):
+        super(AttentionLayer, self).build(input_shape=None)
+        self.wq.build(input_shape=input_wq_shape)
+        self.wk.build(input_shape=input_wk_shape)
+        self.wv.build(input_shape=input_wv_shape)
 
     def transpose_for_scores(self, x):
         x = tf.reshape(x, shape=[self.batch_size, -1, self.num_attention_heads, self.size_per_head])

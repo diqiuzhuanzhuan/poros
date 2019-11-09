@@ -70,6 +70,7 @@ class TestModeling(unittest.TestCase):
         embedding_size = 768
         max_position_embedding = 512
         embedding_postprocessor_layer = modeling.EmbeddingPostprocessorLayer(
+            use_token_type=True,
             embedding_size=embedding_size,
             max_position_embeddings=max_position_embedding
         )
@@ -77,8 +78,9 @@ class TestModeling(unittest.TestCase):
         batch_size = 8
         seq_length = 128
         input_tensor = tf.random.uniform(shape=[batch_size, seq_length, embedding_size])
+        token_tensor = tf.random.uniform(shape=[batch_size, seq_length], maxval=1, minval=0, dtype=tf.int32)
         output = embedding_postprocessor_layer(
-            input_tensor, None
+            input_tensor, token_tensor
         )
         self.assertEqual(output.shape.as_list(), input_tensor.shape.as_list())
 
@@ -123,6 +125,8 @@ class TestModeling(unittest.TestCase):
         q = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, size_per_head]))
         k = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, to_seq_length, size_per_head]))
         v = k
+        attention_layer.build(q.shape, k.shape, v.shape)
+        print(attention_layer.trainable_variables)
         context_layer = attention_layer(q, k, v, attention_mask)
         self.assertEqual(context_layer.shape.as_list(), [batch_size, from_seq_length, num_attention_head * size_per_head])
 
