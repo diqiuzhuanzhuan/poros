@@ -36,7 +36,6 @@ class TestModeling(unittest.TestCase):
     def test_layer_norm_and_dropout(self):
         input_tensor = tf.random.uniform(shape=[8, 128])
         drop_prob = 0.1
-        input_tensor = tf.keras.Input(shape=[128], dtype=tf.float32)
         output_tensor = modeling.layer_norm_and_dropout(input_tensor, drop_prob)
         print(input_tensor)
         print(output_tensor)
@@ -125,7 +124,8 @@ class TestModeling(unittest.TestCase):
         q = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, size_per_head]))
         k = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, to_seq_length, size_per_head]))
         v = k
-        attention_layer.build(q.shape, k.shape, v.shape)
+        print(attention_layer.wq.trainable_variables)
+        #attention_layer.build(q.shape, k.shape, v.shape)
         print(attention_layer.trainable_variables)
         context_layer = attention_layer(q, k, v, attention_mask)
         self.assertEqual(context_layer.shape.as_list(), [batch_size, from_seq_length, num_attention_head * size_per_head])
@@ -136,6 +136,10 @@ class TestModeling(unittest.TestCase):
         to_seq_length = 128
         width = 768
         transformer_layer = modeling.TransformerLayer(
+            batch_size=batch_size,
+            hidden_size=width,
+            from_seq_length=from_seq_length,
+            to_seq_length=to_seq_length,
             num_hidden_layers=12,
             num_attention_heads=12,
             intermediate_size=3072)

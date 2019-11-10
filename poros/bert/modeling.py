@@ -1119,6 +1119,10 @@ def attention_layer(from_tensor,
 class TransformerLayer(tf.keras.layers.Layer):
 
     def __init__(self,
+                 batch_size,
+                 from_seq_length,
+                 to_seq_length,
+                 hidden_size,
                  num_hidden_layers=12,
                  num_attention_heads=12,
                  intermediate_size=3072,
@@ -1135,7 +1139,45 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.hidden_dropout_prob = hidden_dropout_prob
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
         self.initializer_range = initializer_range
+        self.hidden_size = hidden_size
         self.do_return_all_layers = do_return_all_layers
+        self.attention_layers = []
+        self.attention_outputs = []
+        self.intermediate_outputs = []
+        self.size_per_head = int(self.hidden_size / self.num_attention_heads)
+        self.outputs = []
+        for layer_idx in range(self.num_hidden_layers):
+            with tf.name_scope("layer_%d" % layer_idx):
+                with tf.name_scope("attention"):
+                    with tf.name_scope("self"):
+                        layer = AttentionLayer(
+                            num_attention_heads=self.num_attention_heads,
+                            size_per_head=self.size_per_head,
+                            attention_probs_dropout_prob=self.attention_probs_dropout_prob,
+                            initializer_range=self.initializer_range,
+                            batch_size=batch_size,
+                            from_seq_length=from_seq_length,
+                            to_seq_length=to_seq_length
+                        )
+                        self.attention_layers.append(layer)
+                    with tf.name_scope("output"):
+                        layer= tf.keras.layers.Dense(
+                            hidden_size,
+                            kernel_initializer=create_initializer(self.initializer_range))
+                        self.attention_outputs.append(layer)
+
+                with tf.name_scope("intermediate"):
+                    layer = tf.keras.layers.Dense(
+                        self.intermediate_size,
+                        activation=self.intermediate_act_fn,
+                        kernel_initializer=create_initializer(self.initializer_range))
+                    self.intermediate_outputs.append(layer)
+
+                with tf.name_scope("output"):
+                    layer = tf.keras.layers.Dense(
+                        hidden_size,
+                        kernel_initializer=create_initializer(self.initializer_range))
+                    self.outputs.append(layer)
 
     def call(self, input_tensor, attention_mask):
         #input_tensor = features["input_tensor"]
@@ -1151,6 +1193,7 @@ class TransformerLayer(tf.keras.layers.Layer):
                 "heads (%d)" % (input_width, self.num_attention_heads))
 
         size_per_head = int(input_width / self.num_attention_heads)
+        tf.debugging.assert_equal(size_per_head, self.size_per_head)
 
         # We keep the representation as a 2D tensor to avoid re-shaping it back and
         # forth from a 3D tensor to a 2D tensor. Re-shapes are normally free on
@@ -1158,15 +1201,6 @@ class TransformerLayer(tf.keras.layers.Layer):
         # help the optimizer.
         # prev_output = reshape_to_matrix(input_tensor)
         prev_output = input_tensor
-        attention_layer = AttentionLayer(
-            num_attention_heads=self.num_attention_heads,
-            size_per_head=size_per_head,
-            attention_probs_dropout_prob=self.attention_probs_dropout_prob,
-            initializer_range=self.initializer_range,
-            batch_size=batch_size,
-            from_seq_length=seq_length,
-            to_seq_length=seq_length
-        )
 
         all_layer_outputs = []
         for layer_idx in range(self.num_hidden_layers):
@@ -1176,10 +1210,12 @@ class TransformerLayer(tf.keras.layers.Layer):
                 with tf.name_scope("attention"):
                     attention_heads = []
                     with tf.name_scope("self"):
-                        attention_head = attention_layer(layer_input,
-                                                         layer_input,
-                                                         layer_input,
-                                                         attention_mask)
+                        attention_head = self.attention_layers[layer_idx](
+                            layer_input,
+                            layer_input,
+                            layer_input,
+                            attention_mask
+                        )
                         attention_heads.append(attention_head)
 
                     attention_output = None
@@ -1193,24 +1229,17 @@ class TransformerLayer(tf.keras.layers.Layer):
                     # Run a linear projection of `hidden_size` then add a residual
                     # with `layer_input`.
                     with tf.name_scope("output"):
-                        attention_output = tf.keras.layers.Dense(
-                            input_width,
-                            kernel_initializer=create_initializer(self.initializer_range))(attention_output)
+                        self.attention_outputs[layer_idx](attention_output)
                         attention_output = dropout(attention_output, self.hidden_dropout_prob)
                         attention_output = layer_norm(attention_output + layer_input)
 
                 # The activation is only applied to the "intermediate" hidden layer.
                 with tf.name_scope("intermediate"):
-                    intermediate_output = tf.keras.layers.Dense(
-                        self.intermediate_size,
-                        activation=self.intermediate_act_fn,
-                        kernel_initializer=create_initializer(self.initializer_range))(attention_output)
+                    intermediate_output = self.intermediate_outputs[layer_idx](attention_output)
 
                 # Down-project back to `hidden_size` then add the residual.
                 with tf.name_scope("output"):
-                    layer = tf.keras.layers.Dense(input_width,
-                                                  kernel_initializer=create_initializer(self.initializer_range))
-                    layer_output = layer(intermediate_output)
+                    layer_output = self.outputs[layer_idx](intermediate_output)
                     layer_output = dropout(layer_output, self.hidden_dropout_prob)
                     layer_output = layer_norm(layer_output + attention_output)
                     prev_output = layer_output
