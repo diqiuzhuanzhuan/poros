@@ -857,12 +857,9 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
                                         activation=value_act, name="value",
                                         kernel_initializer=create_initializer(initializer_range=0.01))
-
-    def build(self, input_wq_shape, input_wk_shape, input_wv_shape):
-        super(AttentionLayer, self).build(input_shape=None)
-        self.wq.build(input_shape=input_wq_shape)
-        self.wk.build(input_shape=input_wk_shape)
-        self.wv.build(input_shape=input_wv_shape)
+        self.wq.build(input_shape=[None, size_per_head * num_attention_heads])
+        self.wk.build(input_shape=[None, size_per_head * num_attention_heads])
+        self.wv.build(input_shape=[None, size_per_head * num_attention_heads])
 
     def transpose_for_scores(self, x):
         x = tf.reshape(x, shape=[self.batch_size, -1, self.num_attention_heads, self.size_per_head])
@@ -877,6 +874,10 @@ class AttentionLayer(tf.keras.layers.Layer):
         #   N = `num_attention_heads`
         #   H = `size_per_head
         # q : [B, F, H]
+        q = reshape_to_matrix(q)
+        k = reshape_to_matrix(k)
+        v = reshape_to_matrix(v)
+
         query_layer = self.wq(q)
         key_layer = self.wk(k)
         value_layer = self.wv(v)

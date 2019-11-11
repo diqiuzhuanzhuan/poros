@@ -110,7 +110,7 @@ class TestModeling(unittest.TestCase):
     def test_attention_layer(self):
         batch_size = 8
         num_attention_head = 12
-        size_per_head = 32
+        size_per_head = 64
         from_seq_length = 10
         to_seq_length = 10
 
@@ -119,13 +119,17 @@ class TestModeling(unittest.TestCase):
         attention_layer = modeling.AttentionLayer(
             num_attention_heads=num_attention_head,
             size_per_head=size_per_head,
-            batch_size=batch_size)
+            batch_size=batch_size,
+            from_seq_length=from_seq_length,
+            to_seq_length=to_seq_length,
+        )
 
-        q = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, size_per_head]))
-        k = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, to_seq_length, size_per_head]))
+        q = tf.constant(value=tf.initializers.TruncatedNormal()(
+            shape=[batch_size, from_seq_length, num_attention_head *size_per_head]))
+        k = tf.constant(value=tf.initializers.TruncatedNormal()(
+            shape=[batch_size, to_seq_length, num_attention_head * size_per_head]))
         v = k
         print(attention_layer.wq.trainable_variables)
-        #attention_layer.build(q.shape, k.shape, v.shape)
         print(attention_layer.trainable_variables)
         context_layer = attention_layer(q, k, v, attention_mask)
         self.assertEqual(context_layer.shape.as_list(), [batch_size, from_seq_length, num_attention_head * size_per_head])
