@@ -147,6 +147,7 @@ class TestModeling(unittest.TestCase):
             num_hidden_layers=12,
             num_attention_heads=12,
             intermediate_size=3072)
+        print(transformer_layer.trainable_variables)
         input_tensor = tf.constant(value=tf.initializers.TruncatedNormal()(shape=[batch_size, from_seq_length, width]))
         attention_mask = modeling.create_attention_mask_from_input_mask(input_tensor, tf.zeros(shape=[batch_size, to_seq_length]))
         output_tensor = transformer_layer(input_tensor, attention_mask)

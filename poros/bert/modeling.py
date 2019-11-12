@@ -832,7 +832,8 @@ class AttentionLayer(tf.keras.layers.Layer):
                  do_return_2d_tensor=False,
                  batch_size=None,
                  from_seq_length=None,
-                 to_seq_length=None):
+                 to_seq_length=None,
+                 name_scope="attention"):
         """
 
         :rtype: object
@@ -848,14 +849,15 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.batch_size = batch_size
         self.from_seq_length = from_seq_length
         self.to_seq_length = to_seq_length
+        print(self.name_scope())
         self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=query_act, name="query",
+                                        activation=query_act, name="{}/query".format(name_scope),
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wk = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=key_act, name="key",
+                                        activation=key_act, name="{}/key".format(name_scope),
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=value_act, name="value",
+                                        activation=value_act, name="{}/value".format(name_scope),
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wq.build(input_shape=[None, size_per_head * num_attention_heads])
         self.wk.build(input_shape=[None, size_per_head * num_attention_heads])
@@ -874,10 +876,14 @@ class AttentionLayer(tf.keras.layers.Layer):
         #   N = `num_attention_heads`
         #   H = `size_per_head
         # q : [B, F, H]
+
+        # convert to [B * F, N * H]
         q = reshape_to_matrix(q)
+        # convert to [B * T, N * H]
         k = reshape_to_matrix(k)
         v = reshape_to_matrix(v)
 
+        # query_layer: [B, F, N*H]
         query_layer = self.wq(q)
         key_layer = self.wk(k)
         value_layer = self.wv(v)
@@ -1151,6 +1157,7 @@ class TransformerLayer(tf.keras.layers.Layer):
             with tf.name_scope("layer_%d" % layer_idx):
                 with tf.name_scope("attention"):
                     with tf.name_scope("self"):
+                        name_scope = "layer_%d/attention/self/".format(layer_idx)
                         layer = AttentionLayer(
                             num_attention_heads=self.num_attention_heads,
                             size_per_head=self.size_per_head,
@@ -1158,13 +1165,15 @@ class TransformerLayer(tf.keras.layers.Layer):
                             initializer_range=self.initializer_range,
                             batch_size=batch_size,
                             from_seq_length=from_seq_length,
-                            to_seq_length=to_seq_length
+                            to_seq_length=to_seq_length,
+                            name_scope=name_scope
                         )
                         self.attention_layers.append(layer)
                     with tf.name_scope("output"):
-                        layer= tf.keras.layers.Dense(
+                        layer = tf.keras.layers.Dense(
                             hidden_size,
                             kernel_initializer=create_initializer(self.initializer_range))
+                        layer.build(input_shape=[None, self.hidden_size])
                         self.attention_outputs.append(layer)
 
                 with tf.name_scope("intermediate"):
@@ -1172,12 +1181,14 @@ class TransformerLayer(tf.keras.layers.Layer):
                         self.intermediate_size,
                         activation=self.intermediate_act_fn,
                         kernel_initializer=create_initializer(self.initializer_range))
+                    layer.build(input_shape=[None, self.hidden_size])
                     self.intermediate_outputs.append(layer)
 
                 with tf.name_scope("output"):
                     layer = tf.keras.layers.Dense(
                         hidden_size,
                         kernel_initializer=create_initializer(self.initializer_range))
+                    layer.build(input_shape=[None, self.intermediate_size])
                     self.outputs.append(layer)
 
     def call(self, input_tensor, attention_mask):
