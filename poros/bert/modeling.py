@@ -166,6 +166,26 @@ class BertLayer(tf.keras.layers.Layer):
                     self.config.initializer_range,
                     "word_embeddings"
                 )
+            with tf.name_scope(name="encoder"):
+                self.transformer_layer = TransformerLayer(
+                    hidden_size=self.config.hidden_size,
+                    num_hidden_layers=self.config.num_hidden_layers,
+                    num_attention_heads=self.config.num_attention_heads,
+                    intermediate_size=self.config.intermediate_size,
+                    intermediate_act_fn=get_activation(self.config.hidden_act),
+                    hidden_dropout_prob=self.config.hidden_dropout_prob,
+                    attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
+                    initializer_range=self.config.initializer_range,
+                    do_return_all_layers=True)
+
+            with tf.name_scope("pooler"):
+                # We "pool" the model by simply taking the hidden state corresponding
+                # to the first token. We assume that this has been pre-trained
+                self.pooler_layer = tf.keras.layers.Dense(self.config.hidden_size,
+                                                           activation=tf.tanh,
+                                                           kernel_initializer=create_initializer(
+                                                               self.config.initializer_range))
+
 
     def call(self,
              input_ids,
@@ -213,21 +233,8 @@ class BertLayer(tf.keras.layers.Layer):
 
                 # Run the stacked transformer.
                 # `sequence_output` shape = [batch_size, seq_length, hidden_size].
-                transformer_layer = TransformerLayer(
-                    from_seq_length=seq_length,
-                    to_seq_length=seq_length,
-                    hidden_size=self.config.hidden_size,
-                    num_hidden_layers=self.config.num_hidden_layers,
-                    num_attention_heads=self.config.num_attention_heads,
-                    intermediate_size=self.config.intermediate_size,
-                    intermediate_act_fn=get_activation(self.config.hidden_act),
-                    hidden_dropout_prob=self.config.hidden_dropout_prob,
-                    attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
-                    initializer_range=self.config.initializer_range,
-                    do_return_all_layers=True)
-                print(transformer_layer.trainable_variables)
 
-                self.all_encoder_layers = transformer_layer(self.embedding_output, attention_mask)
+                self.all_encoder_layers = self.transformer_layer(self.embedding_output, attention_mask)
 
             self.sequence_output = self.all_encoder_layers[-1]
             # The "pooler" converts the encoded sequence tensor of shape
@@ -239,10 +246,7 @@ class BertLayer(tf.keras.layers.Layer):
                 # We "pool" the model by simply taking the hidden state corresponding
                 # to the first token. We assume that this has been pre-trained
                 first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
-                self.pooled_output = tf.keras.layers.Dense(self.config.hidden_size,
-                                                           activation=tf.tanh,
-                                                           kernel_initializer=create_initializer(
-                                                               self.config.initializer_range))(first_token_tensor)
+                self.pooled_output = self.pooler_layer(first_token_tensor)
         return self.pooled_output
 
     def get_pooled_output(self):
@@ -1172,10 +1176,8 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.outputs = []
         for layer_idx in range(self.num_hidden_layers):
             with tf.name_scope("layer_%d" % layer_idx):
-            #with tf.name_scope("layer_%d" % layer_idx):
                 with tf.name_scope("attention"):
                     with tf.name_scope("self"):
-                        #name_scope = "layer_%d/attention/self/".format(layer_idx)
                         layer = AttentionLayer(
                             num_attention_heads=self.num_attention_heads,
                             size_per_head=self.size_per_head,
@@ -1183,14 +1185,14 @@ class TransformerLayer(tf.keras.layers.Layer):
                             initializer_range=self.initializer_range,
                         )
                         self.attention_layers.append(layer)
-                    with tf.name_scope("output"):
+                    with tf.name_scope("output/dense"):
                         layer = tf.keras.layers.Dense(
                             hidden_size,
                             kernel_initializer=create_initializer(self.initializer_range))
                         layer.build(input_shape=[None, self.hidden_size])
                         self.attention_outputs.append(layer)
 
-                with tf.name_scope("intermediate"):
+                with tf.name_scope("intermediate/dense"):
                     layer = tf.keras.layers.Dense(
                         self.intermediate_size,
                         activation=self.intermediate_act_fn,
@@ -1198,7 +1200,7 @@ class TransformerLayer(tf.keras.layers.Layer):
                     layer.build(input_shape=[None, self.hidden_size])
                     self.intermediate_outputs.append(layer)
 
-                with tf.name_scope("output"):
+                with tf.name_scope("output/dense"):
                     layer = tf.keras.layers.Dense(
                         hidden_size,
                         kernel_initializer=create_initializer(self.initializer_range))

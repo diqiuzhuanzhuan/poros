@@ -148,12 +148,15 @@ class TestModeling(unittest.TestCase):
         print("output_tensor shape is {}".format(output_tensor.shape))
 
     def test_bert_layer(self):
-        vocab_size = 2000
+        vocab_size = 211128
         hidden_size = 768
         bert_config = modeling.BertConfig(vocab_size=vocab_size,hidden_size=hidden_size)
         batch_size = 8
         seq_length = 128
         bert_layer = modeling.BertLayer(config=bert_config, is_training=True)
+        #print(bert_layer.trainable_variables)
+        for ele in bert_layer.trainable_variables:
+            print(ele.shape, ele.name)
         input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
         features = {
             "input_ids": input_ids,
@@ -162,9 +165,7 @@ class TestModeling(unittest.TestCase):
             "scope": "bert"
         }
         output_tensor = bert_layer(input_ids, input_mask=None, token_type_ids=None)
-        print(bert_layer.trainable_variables)
         self.assertEqual(output_tensor.shape.as_list(), [batch_size, hidden_size])
-        print(output_tensor)
 
 
 if __name__ == '__main__':
