@@ -119,9 +119,6 @@ class TestModeling(unittest.TestCase):
         attention_layer = modeling.AttentionLayer(
             num_attention_heads=num_attention_head,
             size_per_head=size_per_head,
-            batch_size=batch_size,
-            from_seq_length=from_seq_length,
-            to_seq_length=to_seq_length,
         )
 
         q = tf.constant(value=tf.initializers.TruncatedNormal()(
@@ -140,10 +137,7 @@ class TestModeling(unittest.TestCase):
         to_seq_length = 128
         width = 768
         transformer_layer = modeling.TransformerLayer(
-            batch_size=batch_size,
             hidden_size=width,
-            from_seq_length=from_seq_length,
-            to_seq_length=to_seq_length,
             num_hidden_layers=12,
             num_attention_heads=12,
             intermediate_size=3072)
@@ -157,11 +151,10 @@ class TestModeling(unittest.TestCase):
         vocab_size = 2000
         hidden_size = 768
         bert_config = modeling.BertConfig(vocab_size=vocab_size,hidden_size=hidden_size)
-        bert_layer = modeling.BertLayer(config=bert_config, is_training=True)
         batch_size = 8
         seq_length = 128
+        bert_layer = modeling.BertLayer(config=bert_config, is_training=True)
         input_ids = tf.random.uniform(shape=[batch_size, seq_length], minval=0, maxval=vocab_size-1, dtype=tf.int32)
-        #input_ids = tf.keras.Input(shape=[seq_length], dtype=tf.int32)
         features = {
             "input_ids": input_ids,
             "input_mask": None,
@@ -169,6 +162,7 @@ class TestModeling(unittest.TestCase):
             "scope": "bert"
         }
         output_tensor = bert_layer(input_ids, input_mask=None, token_type_ids=None)
+        print(bert_layer.trainable_variables)
         self.assertEqual(output_tensor.shape.as_list(), [batch_size, hidden_size])
         print(output_tensor)
 

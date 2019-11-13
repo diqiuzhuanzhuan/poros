@@ -158,7 +158,7 @@ class BertLayer(tf.keras.layers.Layer):
             config.hidden_dropout_prob = 0.0
             config.attention_probs_dropout_prob = 0.0
         self.config = config
-        with tf.name_scope(name_scope="bert"):
+        with tf.name_scope(name="bert"):
             with tf.name_scope("embeddings"):
                 self.embedding_layer = EmbeddingLookupLayer(
                     self.config.vocab_size,
@@ -214,6 +214,9 @@ class BertLayer(tf.keras.layers.Layer):
                 # Run the stacked transformer.
                 # `sequence_output` shape = [batch_size, seq_length, hidden_size].
                 transformer_layer = TransformerLayer(
+                    from_seq_length=seq_length,
+                    to_seq_length=seq_length,
+                    hidden_size=self.config.hidden_size,
                     num_hidden_layers=self.config.num_hidden_layers,
                     num_attention_heads=self.config.num_attention_heads,
                     intermediate_size=self.config.intermediate_size,
@@ -222,6 +225,7 @@ class BertLayer(tf.keras.layers.Layer):
                     attention_probs_dropout_prob=self.config.attention_probs_dropout_prob,
                     initializer_range=self.config.initializer_range,
                     do_return_all_layers=True)
+                print(transformer_layer.trainable_variables)
 
                 self.all_encoder_layers = transformer_layer(self.embedding_output, attention_mask)
 
@@ -240,9 +244,6 @@ class BertLayer(tf.keras.layers.Layer):
                                                            kernel_initializer=create_initializer(
                                                                self.config.initializer_range))(first_token_tensor)
         return self.pooled_output
-
-    def build(self, input_shape):
-        self.la
 
     def get_pooled_output(self):
         return self.pooled_output
@@ -830,9 +831,6 @@ class AttentionLayer(tf.keras.layers.Layer):
                  attention_probs_dropout_prob=0.0,
                  initializer_range=0.02,
                  do_return_2d_tensor=False,
-                 batch_size=None,
-                 from_seq_length=None,
-                 to_seq_length=None,
                  name_scope="attention"):
         """
 
@@ -846,29 +844,32 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.attention_probs_dropout_prob = attention_probs_dropout_prob
         self.initializer_range = initializer_range
         self.do_return_2d_tensor = do_return_2d_tensor
-        self.batch_size = batch_size
-        self.from_seq_length = from_seq_length
-        self.to_seq_length = to_seq_length
-        print(self.name_scope())
         self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=query_act, name="{}/query".format(name_scope),
+                                        activation=query_act,
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wk = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=key_act, name="{}/key".format(name_scope),
+                                        activation=key_act,
                                         kernel_initializer=create_initializer(initializer_range=0.01))
         self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
-                                        activation=value_act, name="{}/value".format(name_scope),
+                                        activation=value_act,
                                         kernel_initializer=create_initializer(initializer_range=0.01))
-        self.wq.build(input_shape=[None, size_per_head * num_attention_heads])
-        self.wk.build(input_shape=[None, size_per_head * num_attention_heads])
-        self.wv.build(input_shape=[None, size_per_head * num_attention_heads])
+        with tf.name_scope("query"):
+            self.wq.build(input_shape=[None, size_per_head * num_attention_heads])
+        with tf.name_scope("key"):
+            self.wk.build(input_shape=[None, size_per_head * num_attention_heads])
+        with tf.name_scope("value"):
+            self.wv.build(input_shape=[None, size_per_head * num_attention_heads])
 
-    def transpose_for_scores(self, x):
-        x = tf.reshape(x, shape=[self.batch_size, -1, self.num_attention_heads, self.size_per_head])
+    def transpose_for_scores(self, x, batch_size):
+        x = tf.reshape(x, shape=[batch_size, -1, self.num_attention_heads, self.size_per_head])
         # shape is [B, N, F, H]
         return tf.transpose(x, [0, 2, 1, 3])
 
-    def call(self, q, k, v, attention_mask=None):
+    def call(self, q, k, v,
+             attention_mask=None,
+             batch_size=None,
+             from_seq_length=None,
+             to_seq_length=None):
         # Scalar dimensions referenced here:
         #   B = batch size (number of sequences)
         #   F = `from_tensor` sequence length
@@ -878,6 +879,25 @@ class AttentionLayer(tf.keras.layers.Layer):
         # q : [B, F, H]
 
         # convert to [B * F, N * H]
+
+        from_shape = get_shape_list(q, expected_rank=[2, 3])
+        to_shape = get_shape_list(k, expected_rank=[2, 3])
+
+        if len(from_shape) != len(to_shape):
+            raise ValueError(
+                "The rank of `from_tensor` must match the rank of `to_tensor`.")
+
+        if len(from_shape) == 3:
+            batch_size = from_shape[0]
+            from_seq_length = from_shape[1]
+            to_seq_length = to_shape[1]
+        elif len(from_shape) == 2:
+            if (batch_size is None or from_seq_length is None or to_seq_length is None):
+                raise ValueError(
+                    "When passing in rank 2 tensors to attention_layer, the values "
+                    "for `batch_size`, `from_seq_length`, and `to_seq_length` "
+                    "must all be specified.")
+
         q = reshape_to_matrix(q)
         # convert to [B * T, N * H]
         k = reshape_to_matrix(k)
@@ -888,8 +908,8 @@ class AttentionLayer(tf.keras.layers.Layer):
         key_layer = self.wk(k)
         value_layer = self.wv(v)
 
-        query_layer = self.transpose_for_scores(query_layer)
-        key_layer = self.transpose_for_scores(key_layer)
+        query_layer = self.transpose_for_scores(query_layer, batch_size)
+        key_layer = self.transpose_for_scores(key_layer, batch_size)
         # attention_score's shape is [B, N, F, T]
         attention_score = tf.matmul(query_layer, key_layer, transpose_b=True)
         attention_score = attention_score / tf.math.sqrt(float(self.size_per_head))
@@ -908,7 +928,7 @@ class AttentionLayer(tf.keras.layers.Layer):
             attention_score += adder
 
         attention_score = tf.nn.softmax(attention_score)
-        value_layer = self.transpose_for_scores(value_layer)
+        value_layer = self.transpose_for_scores(value_layer, batch_size)
         # `context_layer` = [B, N, F, H]
         context_layer = tf.matmul(attention_score, value_layer)
         # `context_layer` = [B, F, N, H]
@@ -922,7 +942,7 @@ class AttentionLayer(tf.keras.layers.Layer):
         else:
             # `context_layer` = [B, F, N * H]
             context_layer = tf.reshape(context_layer,
-                                       [self.batch_size, -1, self.num_attention_heads * self.size_per_head])
+                                       [batch_size, -1, self.num_attention_heads * self.size_per_head])
 
         return context_layer
 
@@ -1126,9 +1146,6 @@ def attention_layer(from_tensor,
 class TransformerLayer(tf.keras.layers.Layer):
 
     def __init__(self,
-                 batch_size,
-                 from_seq_length,
-                 to_seq_length,
                  hidden_size,
                  num_hidden_layers=12,
                  num_attention_heads=12,
@@ -1155,18 +1172,15 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.outputs = []
         for layer_idx in range(self.num_hidden_layers):
             with tf.name_scope("layer_%d" % layer_idx):
+            #with tf.name_scope("layer_%d" % layer_idx):
                 with tf.name_scope("attention"):
                     with tf.name_scope("self"):
-                        name_scope = "layer_%d/attention/self/".format(layer_idx)
+                        #name_scope = "layer_%d/attention/self/".format(layer_idx)
                         layer = AttentionLayer(
                             num_attention_heads=self.num_attention_heads,
                             size_per_head=self.size_per_head,
                             attention_probs_dropout_prob=self.attention_probs_dropout_prob,
                             initializer_range=self.initializer_range,
-                            batch_size=batch_size,
-                            from_seq_length=from_seq_length,
-                            to_seq_length=to_seq_length,
-                            name_scope=name_scope
                         )
                         self.attention_layers.append(layer)
                     with tf.name_scope("output"):
