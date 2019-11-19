@@ -201,6 +201,15 @@ class BertLayer(tf.keras.layers.Layer):
              token_type_ids=None,
              scope="bert",
              use_one_hot_embeddings=False):
+        """
+        Args:
+            input_ids: int32 Tensor of shape [batch_size, seq_length].
+            input_mask: (optional) int32 Tensor of shape [batch_size, seq_length].
+            token_type_ids: (optional) int32 Tensor of shape [batch_size, seq_length].
+            scope: variable scope name, defaults to `bert`
+            use_one_hot_embeddings: (optional) bool. Whether to use one-hot word
+                embeddings or tf.embedding_lookup() for the word embeddings.
+        """
 
         input_shape = get_shape_list(input_ids, expected_rank=2)
         batch_size = input_shape[0]
@@ -571,13 +580,24 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
 
     def __init__(self, vocab_size, embedding_size=128, initializer_range=0.02, name="word_embeddings"):
         super(EmbeddingLookupLayer, self).__init__()
+        truncated_normal = tf.initializers.TruncatedNormal(stddev=initializer_range)
         self.embedding_table = \
             tf.Variable(name=name,
-                        initial_value=tf.initializers.TruncatedNormal(stddev=initializer_range)(shape=[vocab_size, embedding_size]))
+                        initial_value=truncated_normal(shape=[vocab_size, embedding_size]))
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
 
     def call(self, input_ids, use_one_hot_embeddings):
+        """Looks up words embeddings for id tensor.
+
+        Args:
+            input_ids: int32 Tensor of shape [batch_size, seq_length] containing word
+
+        Returns:
+            float Tensor of shape [batch_size, seq_length, embedding_size].
+
+        """
+        # If the input is a 2D tensor of shape [batch_size, seq_length], we
         # reshape to [batch_size, seq_length, 1].
         if input_ids.shape.ndims == 2:
             input_ids = tf.expand_dims(input_ids, axis=[-1])
@@ -1554,7 +1574,6 @@ def assert_rank(tensor, expected_rank, name=None):
 
 
 if __name__ == "__main__":
-    features = tf.keras.Input([784], dtype=tf.float32)
-    #features = tf.initializers.TruncatedNormal()(shape=[8, 784])
+    features = tf.initializers.TruncatedNormal()(shape=[8, 784])
     a = tf.keras.layers.LayerNormalization(epsilon=0.00001)(features)
     print(a)
