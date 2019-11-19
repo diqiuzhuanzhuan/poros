@@ -150,7 +150,8 @@ class TestModeling(unittest.TestCase):
     def test_bert_layer(self):
         vocab_size = 211128
         hidden_size = 768
-        bert_config = modeling.BertConfig(vocab_size=vocab_size,hidden_size=hidden_size)
+        type_vocab_size = 2
+        bert_config = modeling.BertConfig(vocab_size=vocab_size,hidden_size=hidden_size, type_vocab_size=type_vocab_size)
         batch_size = 8
         seq_length = 128
         bert_layer = modeling.BertLayer(config=bert_config, is_training=True)
