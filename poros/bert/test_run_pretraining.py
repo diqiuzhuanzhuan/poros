@@ -18,6 +18,7 @@ class TestRunPretraining(unittest.TestCase):
     def setUpClass(cls) -> None:
         import logging
         tf.get_logger().setLevel(logging.INFO)
+        logging.getLogger().setLevel(logging.INFO)
 
     def test_get_masked_lm_output(self):
         bert_config = modeling.BertConfig(vocab_size=1000)
@@ -91,7 +92,7 @@ class TestRunPretraining(unittest.TestCase):
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
         bert_pretrain_model(features)
-        print(bert_pretrain_model.trainable_variables)
+        #print(bert_pretrain_model.trainable_variables)
 
 
 if __name__ == "__main__":

@@ -119,6 +119,7 @@ class BertPretrainModel(tf.keras.Model):
         self.use_tpu = False
         self.init_checkpoint = init_checkpoint
         self.mask_lm_layer = MaskLmLayer(bert_config=config)
+        self.next_sentence_layer = NextSentenceLayer(bert_config=config)
 
     def init_from_checkpiont(self):
         if not self.init_checkpoint:
@@ -132,20 +133,19 @@ class BertPretrainModel(tf.keras.Model):
 
             checkpoint_vars_name = assignment_map.keys()
             checkpoint_vars = restore.load_variables(self.init_checkpoint, checkpoint_vars_name)
+            count = 0
             for tvar in tvars:
                 if tvar.name.endswith(":0"):
                     tvar_name = tvar.name[:-2]
                 else:
                     tvar_name = tvar.name
+                if tvar_name not in checkpoint_vars:
+                    continue
                 tf.keras.backend.set_value(tvar, checkpoint_vars[tvar_name])
-
-        logging.info("**** Trainable Variables ****")
-        for var in tvars:
-            init_string = ""
-            if var.name in initialized_variable_names:
+                count += 1
                 init_string = ", *INIT_FROM_CKPT*"
-            logging.info("  name = %s, shape = %s%s", var.name, var.shape,
-                         init_string)
+                tf.get_logger().info("  name = %s, shape = %s%s", tvar.name, tvar.shape, init_string)
+            tf.get_logger().info("init {} variables.".format(count))
 
     def call(self, features):
         input_ids = features["input_ids"]
@@ -171,12 +171,8 @@ class BertPretrainModel(tf.keras.Model):
                                masked_lm_weights)
 
         (next_sentence_loss, next_sentence_example_loss, next_sentence_log_probs) = \
-            get_next_sentence_output(
-                bert_config=self.bert_config,
-                input_tensor=bert_layer_output,
-                labels=next_sentence_labels)
+            self.next_sentence_layer(bert_layer_output, next_sentence_labels)
         total_loss = masked_lm_loss + next_sentence_loss
-        print(total_loss)
         self.add_loss(total_loss)
         self.init_from_checkpiont()
 
@@ -191,9 +187,9 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
     def model_fn(features, labels, mode, params):  # pylint: disable=unused-argument
         """The `model_fn` for TPUEstimator."""
 
-        logging.info("*** Features ***")
+        tf.get_logger().info("*** Features ***")
         for name in sorted(features.keys()):
-            logging.info("  name = %s, shape = %s" % (name, features[name].shape))
+            tf.get_logger().info("  name = %s, shape = %s" % (name, features[name].shape))
 
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
@@ -241,12 +237,12 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
             else:
                 tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
 
-        logging.info("**** Trainable Variables ****")
+        tf.get_logger().info("**** Trainable Variables ****")
         for var in tvars:
             init_string = ""
             if var.name in initialized_variable_names:
                 init_string = ", *INIT_FROM_CKPT*"
-            logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+            tf.get_logger().info("  name = %s, shape = %s%s", var.name, var.shape,
                             init_string)
 
         output_spec = None
@@ -419,6 +415,36 @@ def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,
     return (loss, per_example_loss, log_probs)
 
 
+class NextSentenceLayer(tf.keras.layers.Layer):
+
+    def __init__(self, bert_config):
+        super(NextSentenceLayer, self).__init__()
+        self.bert_config = bert_config
+        with tf.name_scope("cls/seq_relationship"):
+            self.output_weights = tf.Variable(
+                name="output_weights",
+                initial_value=modeling.create_initializer(self.bert_config.initializer_range)(
+                    shape=[2, self.bert_config.hidden_size])
+            )
+
+            self.output_bias = tf.Variable(
+                name="output_bias",
+                initial_value=tf.initializers.zeros()(shape=[2])
+            )
+
+    def call(self, input_tensor, labels):
+        logits = tf.matmul(input_tensor, self.output_weights, transpose_b=True)
+        logits = tf.nn.bias_add(logits, self.output_bias)
+        log_probs = tf.nn.log_softmax(logits, axis=-1)
+        labels = tf.reshape(labels, [-1])
+        one_hot_labels = tf.one_hot(labels, depth=2, dtype=tf.float32)
+        per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
+        loss = tf.reduce_mean(per_example_loss)
+        # loss shape: [], per_example_loss shape [batch_size]
+        # log_probs shape: [batch_size, 2]
+        return (loss, per_example_loss, log_probs)
+
+
 def get_next_sentence_output(bert_config, input_tensor, labels):
     """Get loss and log probs for the next sentence prediction."""
     """ bert_config: a BertConfig instance of BertConfig 
@@ -557,7 +583,7 @@ def _decode_record(record, name_to_features):
 
 
 def main(_):
-    logging.getLogger().setLevel(logging.INFO)
+    tf.get_logger().setLevel(logging.INFO)
 
     if not FLAGS.do_train and not FLAGS.do_eval:
         raise ValueError("At least one of `do_train` or `do_eval` must be True.")
@@ -570,9 +596,9 @@ def main(_):
     for input_pattern in FLAGS.input_file.split(","):
         input_files.extend(tf.io.gfile.glob(input_pattern))
 
-    logging.info("*** Input Files ***")
+    tf.get_logger().info("*** Input Files ***")
     for input_file in input_files:
-        logging.info("  %s" % input_file)
+        tf.get_logger().info("  %s" % input_file)
 
     tpu_cluster_resolver = None
     if FLAGS.use_tpu and FLAGS.tpu_name:
@@ -609,8 +635,8 @@ def main(_):
         eval_batch_size=FLAGS.eval_batch_size)
 
     if FLAGS.do_train:
-        logging.info("***** Running training *****")
-        logging.info("  Batch size = %d", FLAGS.train_batch_size)
+        tf.get_logger().info("***** Running training *****")
+        tf.get_logger().info("  Batch size = %d", FLAGS.train_batch_size)
         train_input_fn = input_fn_builder(
             input_files=input_files,
             max_seq_length=FLAGS.max_seq_length,
@@ -619,8 +645,8 @@ def main(_):
         estimator.train(input_fn=train_input_fn, max_steps=FLAGS.num_train_steps)
 
     if FLAGS.do_eval:
-        logging.info("***** Running evaluation *****")
-        logging.info("  Batch size = %d", FLAGS.eval_batch_size)
+        tf.get_logger().info("***** Running evaluation *****")
+        tf.get_logger().info("  Batch size = %d", FLAGS.eval_batch_size)
 
         eval_input_fn = input_fn_builder(
             input_files=input_files,
@@ -633,9 +659,9 @@ def main(_):
 
         output_eval_file = os.path.join(FLAGS.output_dir, "eval_results.txt")
         with tf.io.gfile.GFile(output_eval_file, "w") as writer:
-            logging.info("***** Eval results *****")
+            tf.get_logger().info("***** Eval results *****")
             for key in sorted(result.keys()):
-                logging.info("  %s = %s", key, str(result[key]))
+                tf.get_logger().info("  %s = %s", key, str(result[key]))
                 writer.write("%s = %s\n" % (key, str(result[key])))
 
 
