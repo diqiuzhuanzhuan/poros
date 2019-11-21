@@ -118,6 +118,7 @@ class BertPretrainModel(tf.keras.Model):
         self.use_one_hot_embeddings = use_one_hot_embeddings
         self.use_tpu = False
         self.init_checkpoint = init_checkpoint
+        self.mask_lm_layer = MaskLmLayer(bert_config=config)
 
     def init_from_checkpiont(self):
         if not self.init_checkpoint:
@@ -163,13 +164,11 @@ class BertPretrainModel(tf.keras.Model):
         )
         masked_lm_input = self.bert_layer.get_sequence_output()
         masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = \
-            get_masked_lm_output(
-                bert_config=self.bert_config,
-                input_tensor=masked_lm_input,
-                output_weights=self.bert_layer.get_embedding_table(),
-                positions=masked_lm_positions,
-                label_ids=masked_lm_ids,
-                label_weights=masked_lm_weights)
+            self.mask_lm_layer(masked_lm_input,
+                               self.bert_layer.get_embedding_table(),
+                               masked_lm_positions,
+                               masked_lm_ids,
+                               masked_lm_weights)
 
         (next_sentence_loss, next_sentence_example_loss, next_sentence_log_probs) = \
             get_next_sentence_output(
@@ -324,14 +323,17 @@ class MaskLmLayer(tf.keras.layers.Layer):
             # We apply one more non-linear transformation before the output layer.
             # This matrix is not used after pre-training.
             with tf.name_scope("transform"):
-                self.layer_dense = tf.keras.layers.Dense(
-                    units=self.bert_config.hidden_size,
-                    activation=modeling.get_activation(self.bert_config.hidden_act),
-                    kernel_initializer=modeling.create_initializer(self.bert_config.initializer_range)
-                )
+                with tf.name_scope("dense"):
+                    self.layer_dense = tf.keras.layers.Dense(
+                        units=self.bert_config.hidden_size,
+                        activation=modeling.get_activation(self.bert_config.hidden_act),
+                        kernel_initializer=modeling.create_initializer(self.bert_config.initializer_range)
+                    )
+                    self.layer_dense.build(input_shape=[None, self.bert_config.hidden_size])
 
                 with tf.name_scope("LayerNorm"):
                     self.layer_norm = tf.keras.layers.LayerNormalization(epsilon=0.00001)
+                    self.layer_norm.build(input_shape=[None, self.bert_config.hidden_size])
 
             self.output_bias = tf.Variable(
                 name="output_bias",
