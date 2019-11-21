@@ -91,13 +91,17 @@ def init_from_checkpoint(init_checkpoint, tvars):
 
 
 def restore(init_checkpoint):
-    tvars = tf.trainable_variables()
+    """
+    restore variables from a checkpoint file.
+    note that it doesn't work while in tf.keras model
+    """
+    tvars = tf.compat.v1.trainable_variables()
     assignment_map, initialized_variable_names = get_assignment_map_from_checkpoint(tvars, init_checkpoint)
-    tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
-    tf.logging.info("**** Trainable Variables ****")
+    tf.compat.v1.train.init_from_checkpoint(init_checkpoint, assignment_map)
+    tf.get_logger().info("**** Trainable Variables ****")
     for var in tvars:
         init_string = ""
         if var.name in initialized_variable_names:
             init_string = ", *INIT_FROM_CKPT*"
-        tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+        tf.get_logger().info("  name = %s, shape = %s%s", var.name, var.shape,
                         init_string)
