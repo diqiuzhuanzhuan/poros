@@ -14,6 +14,11 @@ import tensorflow as tf
 
 class TestRunPretraining(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        import logging
+        tf.get_logger().setLevel(logging.INFO)
+
     def test_get_masked_lm_output(self):
         bert_config = modeling.BertConfig(vocab_size=1000)
         batch_size = 8
@@ -53,7 +58,7 @@ class TestRunPretraining(unittest.TestCase):
         self.assertEqual(log_probs.shape.as_list(), [batch_size, 2])
 
     def test_bert_pretrain_model(self):
-        bert_config = modeling.BertConfig(vocab_size=1000)
+        bert_config = modeling.BertConfig.from_json_file("../bert_model/data/chinese_L-12_H-768_A-12/bert_config.json")
         max_seq_length = 128
         max_predictions_per_seq = 20
         batch_size = 8
@@ -83,9 +88,10 @@ class TestRunPretraining(unittest.TestCase):
         bert_pretrain_model = run_pretraining.BertPretrainModel(
             config=bert_config,
             is_training=True,
-            init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12"
+            init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
         bert_pretrain_model(features)
+        print(bert_pretrain_model.trainable_variables)
 
 
 if __name__ == "__main__":

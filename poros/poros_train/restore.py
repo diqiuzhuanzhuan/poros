@@ -37,6 +37,30 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
     return (assignment_map, initialized_variable_names)
 
 
+def load_variables(ckpt_dir_or_file, names):
+    """Returns the tensor value of the given variable in the checkpoint.
+
+    Args:
+      ckpt_dir_or_file: Directory with checkpoints file or path to checkpoint.
+      name: Names of the variable to return.
+
+    Returns:
+      A dict containing all variables corresponding to names, each in it with a copy of the value of this variable.
+      ```
+        {'bert/encoder/bias': var1}
+      ```
+    """
+    # TODO(b/29227106): Fix this in the right place and remove this.
+    name_to_vars = collections.OrderedDict()
+    reader = tf.train.load_checkpoint(ckpt_dir_or_file)
+    for name in names:
+        if name.endswith(":0"):
+            name = name[:-2]
+        name_to_vars[name] = reader.get_tensor(name)
+
+    return name_to_vars
+
+
 def restore(init_checkpoint):
     tvars = tf.trainable_variables()
     assignment_map, initialized_variable_names = get_assignment_map_from_checkpoint(tvars, init_checkpoint)

@@ -25,6 +25,7 @@ import tensorflow as tf
 from absl import flags
 from absl import app
 import logging
+from poros_train import restore
 
 
 FLAGS = flags.FLAGS
@@ -122,21 +123,20 @@ class BertPretrainModel(tf.keras.Model):
         if not self.init_checkpoint:
             return
 
-        tvars = tf.compat.v1.trainable_variables()
+        tvars = self.trainable_variables
         initialized_variable_names = {}
-        scaffold_fn = None
         if self.init_checkpoint:
             (assignment_map, initialized_variable_names
              ) = modeling.get_assignment_map_from_checkpoint(tvars, self.init_checkpoint)
-            if self.use_tpu:
 
-                def tpu_scaffold():
-                    tf.compat.v1.train.init_from_checkpoint(self.init_checkpoint, assignment_map)
-                    return tf.compat.v1.train.Scaffold()
-
-                scaffold_fn = tpu_scaffold
-            else:
-                tf.compat.v1.train.init_from_checkpoint(self.init_checkpoint, assignment_map)
+            checkpoint_vars_name = assignment_map.keys()
+            checkpoint_vars = restore.load_variables(self.init_checkpoint, checkpoint_vars_name)
+            for tvar in tvars:
+                if tvar.name.endswith(":0"):
+                    tvar_name = tvar.name[:-2]
+                else:
+                    tvar_name = tvar.name
+                tf.keras.backend.set_value(tvar, checkpoint_vars[tvar_name])
 
         logging.info("**** Trainable Variables ****")
         for var in tvars:
@@ -146,7 +146,7 @@ class BertPretrainModel(tf.keras.Model):
             logging.info("  name = %s, shape = %s%s", var.name, var.shape,
                          init_string)
 
-    def __call__(self, features):
+    def call(self, features):
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
         segment_ids = features["segment_ids"]
@@ -155,10 +155,11 @@ class BertPretrainModel(tf.keras.Model):
         masked_lm_weights = features["masked_lm_weights"]
         next_sentence_labels = features["next_sentence_labels"]
         bert_layer_output = self.bert_layer(
-            input_ids=input_ids,
-            input_mask=input_mask,
-            token_type_ids=segment_ids,
-            use_one_hot_embeddings=self.use_one_hot_embeddings
+            input_ids,
+            input_mask,
+            segment_ids,
+            "bert",
+            self.use_one_hot_embeddings
         )
         masked_lm_input = self.bert_layer.get_sequence_output()
         masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = \
@@ -312,6 +313,55 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         return output_spec
 
     return model_fn
+
+
+class MaskLmLayer(tf.keras.layers.Layer):
+
+    def __init__(self, bert_config):
+        super(MaskLmLayer, self).__init__()
+        self.bert_config = bert_config
+        with tf.name_scope("cls/predictions"):
+            # We apply one more non-linear transformation before the output layer.
+            # This matrix is not used after pre-training.
+            with tf.name_scope("transform"):
+                self.layer_dense = tf.keras.layers.Dense(
+                    units=self.bert_config.hidden_size,
+                    activation=modeling.get_activation(self.bert_config.hidden_act),
+                    kernel_initializer=modeling.create_initializer(self.bert_config.initializer_range)
+                )
+
+                with tf.name_scope("LayerNorm"):
+                    self.layer_norm = tf.keras.layers.LayerNormalization(epsilon=0.00001)
+
+            self.output_bias = tf.Variable(
+                name="output_bias",
+                initial_value=tf.zeros_initializer()(shape=[self.bert_config.vocab_size]))
+
+    def call(self, input_tensor, output_weights, positions, label_ids, label_weights):
+        input_tensor = gather_indexes(input_tensor, positions)
+        input_tensor = self.layer_dense(input_tensor)
+        input_tensor = self.layer_norm(input_tensor)
+        logits = tf.matmul(input_tensor, output_weights, transpose_b=True)
+        logits = tf.nn.bias_add(logits, self.output_bias)
+        log_probs = tf.nn.log_softmax(logits, axis=-1)
+        label_ids = tf.reshape(label_ids, [-1])
+        label_weights = tf.reshape(label_weights, [-1])
+
+        one_hot_labels = tf.one_hot(
+            label_ids, depth=self.bert_config.vocab_size, dtype=tf.float32)
+
+        # The `positions` tensor might be zero-padded (if the sequence is too
+        # short to have the maximum number of predictions). The `label_weights`
+        # tensor has a value of 1.0 for every real prediction and 0.0 for the
+        # padding predictions.
+        # per_example_loss tensor shape is `[batch_size * seq_length]`
+        per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+        numerator = tf.reduce_sum(label_weights * per_example_loss)
+        denominator = tf.reduce_sum(label_weights) + 1e-5
+        # loss tensor shape is `[]`
+        loss = numerator / denominator
+
+        return (loss, per_example_loss, log_probs)
 
 
 def get_masked_lm_output(bert_config, input_tensor, output_weights, positions,

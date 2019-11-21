@@ -527,10 +527,9 @@ def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
         name_to_variable[name] = var
 
     init_vars = tf.train.list_variables(init_checkpoint)
-
+    tf.get_logger().info("variable num is {}".format(len(init_vars)))
     assignment_map = collections.OrderedDict()
     for x in init_vars:
-        print(x)
         (name, var) = (x[0], x[1])
         if name not in name_to_variable:
             continue
