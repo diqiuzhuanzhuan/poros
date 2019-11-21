@@ -61,6 +61,35 @@ def load_variables(ckpt_dir_or_file, names):
     return name_to_vars
 
 
+def init_from_checkpoint(init_checkpoint, tvars):
+    """
+    use variables in init_checkpoint to set value of variables in tvars
+
+    Args:
+        init_checkpoint: a checkpoint file
+        tvars: a list of Variables, a Tensor
+    """
+    if init_checkpoint:
+        (assignment_map, initialized_variable_names
+         ) = get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+
+        checkpoint_vars_name = assignment_map.keys()
+        checkpoint_vars = load_variables(init_checkpoint, checkpoint_vars_name)
+        count = 0
+        for tvar in tvars:
+            if tvar.name.endswith(":0"):
+                tvar_name = tvar.name[:-2]
+            else:
+                tvar_name = tvar.name
+            if tvar_name not in checkpoint_vars:
+                continue
+            tf.keras.backend.set_value(tvar, checkpoint_vars[tvar_name])
+            count += 1
+            init_string = ", *INIT_FROM_CKPT*"
+            tf.get_logger().info("  name = %s, shape = %s%s", tvar.name, tvar.shape, init_string)
+        tf.get_logger().info("init {} variables.".format(count))
+
+
 def restore(init_checkpoint):
     tvars = tf.trainable_variables()
     assignment_map, initialized_variable_names = get_assignment_map_from_checkpoint(tvars, init_checkpoint)

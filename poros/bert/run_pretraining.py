@@ -124,28 +124,8 @@ class BertPretrainModel(tf.keras.Model):
     def init_from_checkpiont(self):
         if not self.init_checkpoint:
             return
-
         tvars = self.trainable_variables
-        initialized_variable_names = {}
-        if self.init_checkpoint:
-            (assignment_map, initialized_variable_names
-             ) = modeling.get_assignment_map_from_checkpoint(tvars, self.init_checkpoint)
-
-            checkpoint_vars_name = assignment_map.keys()
-            checkpoint_vars = restore.load_variables(self.init_checkpoint, checkpoint_vars_name)
-            count = 0
-            for tvar in tvars:
-                if tvar.name.endswith(":0"):
-                    tvar_name = tvar.name[:-2]
-                else:
-                    tvar_name = tvar.name
-                if tvar_name not in checkpoint_vars:
-                    continue
-                tf.keras.backend.set_value(tvar, checkpoint_vars[tvar_name])
-                count += 1
-                init_string = ", *INIT_FROM_CKPT*"
-                tf.get_logger().info("  name = %s, shape = %s%s", tvar.name, tvar.shape, init_string)
-            tf.get_logger().info("init {} variables.".format(count))
+        restore.init_from_checkpoint(self.init_checkpoint, tvars)
 
     def call(self, features):
         input_ids = features["input_ids"]
@@ -176,7 +156,7 @@ class BertPretrainModel(tf.keras.Model):
         self.add_loss(total_loss)
         self.init_from_checkpiont()
 
-        return bert_layer_output
+        return bert_layer_output, total_loss
 
 
 def model_fn_builder(bert_config, init_checkpoint, learning_rate,
