@@ -127,7 +127,7 @@ class BertPretrainModel(tf.keras.Model):
         tvars = self.trainable_variables
         restore.init_from_checkpoint(self.init_checkpoint, tvars)
 
-    def call(self, features):
+    def call(self, features, learning_rate, num_train_steps):
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
         segment_ids = features["segment_ids"]
@@ -155,6 +155,18 @@ class BertPretrainModel(tf.keras.Model):
         total_loss = masked_lm_loss + next_sentence_loss
         self.add_loss(total_loss)
         self.init_from_checkpiont()
+        masked_lm_log_probs = tf.reshape(masked_lm_log_probs,
+                                         [-1, masked_lm_log_probs.shape[-1]])
+        masked_lm_predictions = tf.argmax(
+            masked_lm_log_probs, axis=-1, output_type=tf.int32)
+        masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
+        masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
+        self.masked_lm_accuracy = tf.metrics.Accuracy(name="masked_lm_accuracy")
+        self.add_metric(self.masked_lm_accuracy(y_pred=masked_lm_predictions, y_true=masked_lm_ids, sample_weight=masked_lm_weights),
+                        aggregation='mean',
+                        name="masked_lm_accuracy")
+        self.masked_lm_mean_loss = tf.metrics.Mean(name="masked_lm_mean_loss")
+        self.add_metric(self.masked_lm_mean_loss(masked_lm_example_loss, sample_weight=masked_lm_weights), name="masked_lm_mean_loss")
 
         return bert_layer_output, total_loss
 

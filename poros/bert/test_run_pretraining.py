@@ -91,6 +91,7 @@ class TestRunPretraining(unittest.TestCase):
             is_training=True,
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
+        bert_pretrain_model.compile()
         output = bert_pretrain_model(features)
         print(output)
 
