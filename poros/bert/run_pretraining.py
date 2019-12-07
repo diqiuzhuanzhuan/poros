@@ -129,7 +129,7 @@ class BertPretrainModel(tf.keras.Model):
         tvars = self.trainable_variables
         restore.init_from_checkpoint(self.init_checkpoint, tvars)
 
-    def call(self, features, learning_rate, num_train_steps):
+    def call(self, features):
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
         segment_ids = features["segment_ids"]

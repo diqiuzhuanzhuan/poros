@@ -91,9 +91,39 @@ class TestRunPretraining(unittest.TestCase):
             is_training=True,
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
-        bert_pretrain_model.compile()
-        output = bert_pretrain_model(features)
-        print(output)
+
+        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+        d = tf.data.TFRecordDataset("./output")
+        # Since we evaluate for a fixed number of steps we don't want to encounter
+        # out-of-range exceptions.
+        d = d.repeat()
+        name_to_features = {
+            "input_ids":
+                tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "input_mask":
+                tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "segment_ids":
+                tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "masked_lm_positions":
+                tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
+            "masked_lm_ids":
+                tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
+            "masked_lm_weights":
+                tf.io.FixedLenFeature([max_predictions_per_seq], tf.float32),
+            "next_sentence_labels":
+                tf.io.FixedLenFeature([1], tf.int64),
+        }
+
+        d = d.apply(
+            tf.data.experimental.map_and_batch(
+                lambda record: run_pretraining._decode_record(record, name_to_features),
+                batch_size=batch_size,
+                drop_remainder=True))
+
+        bert_pretrain_model.fit(d, epochs=5)
+        #output = bert_pretrain_model(features)
+
+        #print(output)
 
 
 if __name__ == "__main__":

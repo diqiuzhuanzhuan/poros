@@ -1258,6 +1258,15 @@ class TransformerLayer(tf.keras.layers.Layer):
                         layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
                         layer.build(input_shape=[None, None, self.hidden_size])
                         self.outputs_layer_norm.append(layer)
+        """
+        self.attention_layers = tf.stack(self.attention_layers)
+        self.attention_outputs = tf.stack(self.attention_outputs)
+        self.attention_outputs_layer_norm = tf.stack(self.attention_outputs_layer_norm)
+        self.intermediate_outputs = tf.stack(self.intermediate_outputs)
+        self.outputs = tf.stack(self.outputs)
+        self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
+        """
+        tf.keras.Sequential(self.attention_layers)
 
     def call(self, input_tensor, attention_mask):
         #input_tensor = features["input_tensor"]
@@ -1283,49 +1292,42 @@ class TransformerLayer(tf.keras.layers.Layer):
         prev_output = input_tensor
 
         all_layer_outputs = []
+
         for layer_idx in range(self.num_hidden_layers):
-            with tf.name_scope("layer_%d" % layer_idx):
-                layer_input = prev_output
+            layer_input = prev_output
+            attention_heads = []
+            attention_head = self.attention_layers[layer_idx](
+                layer_input,
+                layer_input,
+                layer_input,
+                attention_mask)
+            attention_heads.append(attention_head)
 
-                with tf.name_scope("attention"):
-                    attention_heads = []
-                    with tf.name_scope("self"):
-                        attention_head = self.attention_layers[layer_idx](
-                            layer_input,
-                            layer_input,
-                            layer_input,
-                            attention_mask
-                        )
-                        attention_heads.append(attention_head)
-
-                    attention_output = None
-                    if len(attention_heads) == 1:
-                        attention_output = attention_heads[0]
-                    else:
-                        # In the case where we have other sequences, we just concatenate
+            attention_output = None
+            if len(attention_heads) == 1:
+                attention_output = attention_heads[0]
+            else:
+                    # In the case where we have other sequences, we just concatenate
                         # them to the self-attention head before the projection.
-                        attention_output = tf.concat(attention_heads, axis=-1)
+                attention_output = tf.concat(attention_heads, axis=-1)
 
                     # Run a linear projection of `hidden_size` then add a residual
                     # with `layer_input`.
-                    with tf.name_scope("output"):
-                        attention_output = self.attention_outputs[layer_idx](attention_output)
-                        attention_output = dropout(attention_output, self.hidden_dropout_prob)
-                        attention_output = self.attention_outputs_layer_norm[layer_idx](attention_output + layer_input)
-                        attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            attention_output = self.attention_outputs[layer_idx](attention_output)
+            attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            attention_output = self.attention_outputs_layer_norm[layer_idx](attention_output + layer_input)
+            attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
-                # The activation is only applied to the "intermediate" hidden layer.
-                with tf.name_scope("intermediate"):
-                    intermediate_output = self.intermediate_outputs[layer_idx](attention_output)
+            # The activation is only applied to the "intermediate" hidden layer.
+            intermediate_output = self.intermediate_outputs[layer_idx](attention_output)
 
                 # Down-project back to `hidden_size` then add the residual.
-                with tf.name_scope("output"):
-                    layer_output = self.outputs[layer_idx](intermediate_output)
-                    layer_output = dropout(layer_output, self.hidden_dropout_prob)
-                    layer_output = self.outputs_layer_norm[layer_idx](layer_output + attention_output)
-                    layer_output = dropout(layer_output, self.hidden_dropout_prob)
-                    prev_output = layer_output
-                    all_layer_outputs.append(layer_output)
+            layer_output = self.outputs[layer_idx](intermediate_output)
+            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            layer_output = self.outputs_layer_norm[layer_idx](layer_output + attention_output)
+            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            prev_output = layer_output
+            all_layer_outputs.append(layer_output)
 
         if self.do_return_all_layers:
             final_outputs = []
