@@ -120,7 +120,7 @@ class TestRunPretraining(unittest.TestCase):
                 batch_size=batch_size,
                 drop_remainder=True))
 
-        bert_pretrain_model.fit(d, epochs=5)
+        bert_pretrain_model.fit(d, epochs=5, steps_per_epoch=100)
         #output = bert_pretrain_model(features)
 
         #print(output)

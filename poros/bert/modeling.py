@@ -724,8 +724,13 @@ class EmbeddingPostprocessorLayer(tf.keras.layers.Layer):
                 # we broadcast among the first dimensions, which is typically just
                 # the batch size.
                 position_broadcast_shape = []
+                for _ in output.shape.as_list()[0:-2]:
+                    position_broadcast_shape.append(1)
+
+                """
                 for _ in range(num_dims - 2):
                     position_broadcast_shape.append(1)
+                """
                 position_broadcast_shape.extend([seq_length, width])
                 position_embeddings = tf.reshape(position_embeddings, position_broadcast_shape)
                 output += position_embeddings
@@ -1266,7 +1271,6 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.outputs = tf.stack(self.outputs)
         self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
         """
-        tf.keras.Sequential(self.attention_layers)
 
     def call(self, input_tensor, attention_mask):
         #input_tensor = features["input_tensor"]
@@ -1293,38 +1297,43 @@ class TransformerLayer(tf.keras.layers.Layer):
 
         all_layer_outputs = []
 
-        for layer_idx in range(self.num_hidden_layers):
+        for (attention_layer,
+             attention_output_layer,
+             attention_output_layer_norm,
+             intermediate_output,
+             output,
+             output_layer_norm) in zip(self.attention_layers,
+                                   self.attention_outputs,
+                                   self.attention_outputs_layer_norm,
+                                   self.intermediate_outputs,
+                                   self.outputs,
+                                   self.outputs_layer_norm):
             layer_input = prev_output
             attention_heads = []
-            attention_head = self.attention_layers[layer_idx](
-                layer_input,
-                layer_input,
-                layer_input,
-                attention_mask)
+            attention_head = attention_layer(layer_input, layer_input, layer_input, attention_mask)
             attention_heads.append(attention_head)
-
             attention_output = None
             if len(attention_heads) == 1:
                 attention_output = attention_heads[0]
             else:
-                    # In the case where we have other sequences, we just concatenate
-                        # them to the self-attention head before the projection.
+                # In the case where we have other sequences, we just concatenate
+                # them to the self-attention head before the projection.
                 attention_output = tf.concat(attention_heads, axis=-1)
 
-                    # Run a linear projection of `hidden_size` then add a residual
-                    # with `layer_input`.
-            attention_output = self.attention_outputs[layer_idx](attention_output)
+                # Run a linear projection of `hidden_size` then add a residual
+                # with `layer_input`.
+            attention_output = attention_output_layer(attention_output)
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
-            attention_output = self.attention_outputs_layer_norm[layer_idx](attention_output + layer_input)
+            attention_output = attention_output_layer_norm(attention_output + layer_input)
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             # The activation is only applied to the "intermediate" hidden layer.
-            intermediate_output = self.intermediate_outputs[layer_idx](attention_output)
+            intermediate_output = intermediate_output(attention_output)
 
-                # Down-project back to `hidden_size` then add the residual.
-            layer_output = self.outputs[layer_idx](intermediate_output)
+            # Down-project back to `hidden_size` then add the residual.
+            layer_output = output(intermediate_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
-            layer_output = self.outputs_layer_norm[layer_idx](layer_output + attention_output)
+            layer_output = output_layer_norm(layer_output + attention_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
             all_layer_outputs.append(layer_output)

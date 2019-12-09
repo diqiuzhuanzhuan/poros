@@ -168,6 +168,7 @@ class BertPretrainModel(tf.keras.Model):
             masked_lm_log_probs, axis=-1, output_type=tf.int32)
         masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
         masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
+        """
         self.masked_lm_accuracy = tf.metrics.Accuracy(name="masked_lm_accuracy")
         self.add_metric(self.masked_lm_accuracy(y_pred=masked_lm_predictions,
                                                 y_true=masked_lm_ids,
@@ -180,13 +181,13 @@ class BertPretrainModel(tf.keras.Model):
                         name="masked_lm_mean_loss")
 
         self.next_sentence_accuracy = tf.metrics.Accuracy(name="next_sentence_accuracy")
-        self.add_metric(self.next_sentence_accuracy(y_prd=next_sentence_predictions,
+        self.add_metric(self.next_sentence_accuracy(y_pred=next_sentence_predictions,
                                                     y_true=next_sentence_labels),
                         aggregation='mean',
                         name="next_sentence_accuracy")
         self.next_sentence_mean_loss = tf.metrics.Mean(name="next_sentence_mean_loss")
         self.add_metric(self.next_sentence_mean_loss(next_sentence_loss), name="next_sentence_mean_loss")
-
+        """
 
         return bert_layer_output, total_loss
 
