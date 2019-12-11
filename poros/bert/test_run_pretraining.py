@@ -117,13 +117,11 @@ class TestRunPretraining(unittest.TestCase):
         d = d.apply(
             tf.data.experimental.map_and_batch(
                 lambda record: run_pretraining._decode_record(record, name_to_features),
-                batch_size=batch_size,
+                batch_size=8,
                 drop_remainder=True))
 
-        bert_pretrain_model.fit(d, epochs=5, steps_per_epoch=100)
-        #output = bert_pretrain_model(features)
-
-        #print(output)
+        bert_pretrain_model.fit(d, epochs=100, steps_per_epoch=20)
+        output = bert_pretrain_model(features)
 
 
 if __name__ == "__main__":
