@@ -28,20 +28,27 @@ import tensorflow as tf
 from absl import flags
 from absl import app
 import logging
+from poros.poros_dataset import about_tfrecord
 
 FLAGS = flags.FLAGS
 
 ## Required parameters
+"""
 flags.DEFINE_string(
     "data_dir", None,
     "The input data dir. Should contain the .tsv files (or other data files) "
-    "for the task.")
+"""
 
+
+
+"""
 flags.DEFINE_string(
     "bert_config_file", None,
     "The config json file corresponding to the pre-trained BERT model. "
     "This specifies the model architecture.")
+    """
 
+"""
 flags.DEFINE_string("task_name", None, "The name of the task to train.")
 
 flags.DEFINE_string("vocab_file", None,
@@ -124,6 +131,7 @@ flags.DEFINE_integer(
     "num_tpu_cores", 8,
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
+"""
 
 class InputExample(object):
     """A single training/test example for simple sequence classification."""
@@ -173,6 +181,17 @@ class InputFeatures(object):
         self.segment_ids = segment_ids
         self.label_id = label_id
         self.is_real_example = is_real_example
+
+
+class SiameseFeatures(object):
+
+    def __init__(self,
+                 input_ids_a,
+                 input_ids_b,
+                 label_id):
+        self.input_ids_a = input_ids_a
+        self.input_ids_b = input_ids_b
+        self.label_id = label_id
 
 
 class DataProcessor(object):
@@ -335,7 +354,7 @@ class MrpcProcessor(DataProcessor):
 
 
 class ColaProcessor(DataProcessor):
-    """Processor for the CoLA data set (GLUE version)."""
+    """Processor for the Cola data set (GLUE version)"""
 
     def get_train_examples(self, data_dir):
         """See base class."""
@@ -373,6 +392,157 @@ class ColaProcessor(DataProcessor):
             examples.append(
                 InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
+
+
+class SiameseProcessor(DataProcessor):
+
+    def __init__(self, tokenizer, max_seq_length):
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+    def get_examples_not_from_file(self, lines, set_type):
+        return self._create_examples(lines, set_type)
+
+    def get_labels(self):
+        """See base class."""
+        return ["0", "1"]
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text_a = tokenization.convert_to_unicode(line[0])
+            text_b = tokenization.convert_to_unicode(line[1])
+            label = tokenization.convert_to_unicode(line[2])
+            examples.append(
+                InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+        return examples
+
+    def convert_examples_to_features(self, examples):
+        res = []
+        for e_index, example in enumerate(examples):
+            feature = self._convert_single_example(e_index, example)
+            res.append(feature)
+        return res
+
+    def write_features_into_tfrecord(self, features, filename):
+        writer = tf.io.TFRecordWriter(filename)
+        for ele in features:
+            features = collections.OrderedDict()
+            features["input_ids_a"] = about_tfrecord._int64_feature(ele.input_ids_a)
+            features["input_ids_b"] = about_tfrecord._int64_feature(ele.input_ids_b)
+            features["label_id"] = about_tfrecord._int64_feature(ele.label_id)
+            writer.write(about_tfrecord.serialize_example(ele))
+
+        writer.close()
+
+    def _convert_single_example(self, ex_index, example):
+        label_map = {}
+        for (i, label) in enumerate(self.get_labels()):
+            label_map[label] = i
+
+        tokens_a = self.tokenizer.tokenize(example.text_a)
+        tokens_b = self.tokenizer.tokenize(example.text_b)
+        if tokens_a:
+            # Account for [CLS] and [SEP] with "- 2"
+            tokens_a = tokens_a[0:(self.max_seq_length - 2)]
+
+        if tokens_b:
+            # Account for [CLS] and [SEP] with "- 2"
+            tokens_b = tokens_b[0:(self.max_seq_length - 2)]
+
+        # The convention in BERT is:
+        # (a) For sequence pairs:
+        #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
+        #  type_ids: 0     0  0    0    0     0       0 0     1  1  1  1   1 1
+        # (b) For single sequences:
+        #  tokens:   [CLS] the dog is hairy . [SEP]
+        #  type_ids: 0     0   0   0  0     0 0
+        #
+        # Where "type_ids" are used to indicate whether this is the first
+        # sequence or the second sequence. The embedding vectors for `type=0` and
+        # `type=1` were learned during pre-training and are added to the wordpiece
+        # embedding vector (and position vector). This is not *strictly* necessary
+        # since the [SEP] token unambiguously separates the sequences, but it makes
+        # it easier for the model to learn the concept of sequences.
+        #
+        # For classification tasks, the first vector (corresponding to [CLS]) is
+        # used as as the "sentence vector". Note that this only makes sense because
+        # the entire model is fine-tuned.
+        tokens = []
+        tokens.append("[CLS]")
+        for token in tokens_a:
+            tokens.append(token)
+        tokens.append("[SEP]")
+        input_ids_a = self.tokenizer.convert_tokens_to_ids(tokens)
+
+        tokens = []
+        tokens.append("[CLS]")
+        if tokens_b:
+            for token in tokens_b:
+                tokens.append(token)
+            tokens.append("[SEP]")
+
+        input_ids_b = self.tokenizer.convert_tokens_to_ids(tokens)
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+
+        # Zero-pad up to the sequence length.
+        while len(input_ids_a) < self.max_seq_length:
+            input_ids_a.append(0)
+
+        while len(input_ids_b) < self.max_seq_length:
+            input_ids_b.append(0)
+
+        assert len(input_ids_a) == self.max_seq_length
+        assert len(input_ids_b) == self.max_seq_length
+
+        label_id = label_map[example.label]
+        if ex_index < 5:
+            tf.get_logger().info("*** Example ***")
+            tf.get_logger().info("guid: %s" % (example.guid))
+            tf.get_logger().info("tokens: %s" % " ".join(
+                [tokenization.printable_text(x) for x in tokens]))
+            tf.get_logger().info("input_ids_a: %s" % " ".join([str(x) for x in input_ids_a]))
+            tf.get_logger().info("input_ids_b: %s" % " ".join([str(x) for x in input_ids_b]))
+            tf.get_logger().info("label: %s (id = %d)" % (example.label, label_id))
+
+        feature = SiameseFeatures(
+            input_ids_a=input_ids_a,
+            input_ids_b=input_ids_b,
+            label_id=label_id)
+        return feature
+
+    def convert_features(self, feature: SiameseFeatures):
+
+        def create_int_feature(values):
+            f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+            return f
+
+        features = {
+            "input_ids_a": create_int_feature(feature.input_ids_a),
+            "input_ids_b": create_int_feature(feature.input_ids_b),
+            "label_id": create_int_feature([feature.label_id])
+
+        }
+        return tf.train.Features(feature=features)
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,
@@ -475,6 +645,18 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
         label_id=label_id,
         is_real_example=True)
     return feature
+
+
+def convert_features(feature):
+    def create_int_feature(values):
+        f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+        return f
+    features = collections.OrderedDict()
+    features["input_ids"] = create_int_feature(feature.input_ids)
+    features["input_mask"] = create_int_feature(feature.input_mask)
+    features["segment_ids"] = create_int_feature(feature.segment_ids)
+    features["label_ids"] = create_int_feature([feature.label_id])
+    return features
 
 
 def file_based_convert_examples_to_features(
@@ -979,6 +1161,6 @@ if __name__ == "__main__":
     flags.mark_flag_as_required("data_dir")
     flags.mark_flag_as_required("task_name")
     flags.mark_flag_as_required("vocab_file")
-    flags.mark_flag_as_required("bert_config_file")
+#    flags.mark_flag_as_required("bert_config_file")
     flags.mark_flag_as_required("output_dir")
     app.run()

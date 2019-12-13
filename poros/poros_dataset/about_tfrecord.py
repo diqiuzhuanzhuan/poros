@@ -26,7 +26,7 @@ def _int64_feature(value):
 
 def _parse_function(example_proto, feature_description):
     """Parse the input tf.Example proto using the dictionary above."""
-    return tf.parse_single_example(example_proto, feature_description)
+    return tf.io.parse_single_example(example_proto, feature_description)
 
 
 def serialize_example(feature):
@@ -70,4 +70,4 @@ def parse_example(example_proto, feature_description):
     
     """
     # Parse the input tf.Example proto using the dictionary above.
-    return tf.parse_single_example(example_proto, feature_description)
+    return tf.io.parse_single_example(example_proto, feature_description)

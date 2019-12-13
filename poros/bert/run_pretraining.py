@@ -109,6 +109,55 @@ flags.DEFINE_integer(
     "Only used if `use_tpu` is True. Total number of TPU cores to use.")
 
 
+class SiameseBertModel(tf.keras.Model):
+
+    def __init__(self, config, is_training, init_checkpoint=None, use_one_hot_embeddings=False, **kwargs):
+        super(SiameseBertModel, self).__init__()
+        self.bert_config = config
+        self.bert_layer = modeling.BertLayer(config=config, is_training=is_training)
+        self.use_one_hot_embeddings = use_one_hot_embeddings
+        self.use_tpu = False
+        self.init_checkpoint = init_checkpoint
+        self.mask_lm_layer = MaskLmLayer(bert_config=config)
+        self.next_sentence_layer = NextSentenceLayer(bert_config=config)
+        self.masked_lm_accuracy = None
+        self.masked_lm_mean_loss = None
+        self.init_from_checkpoint()
+        self.layer = tf.keras.layers.Dense(units=2, activation=tf.nn.softmax)
+
+    def init_from_checkpoint(self):
+        if not self.init_checkpoint:
+            return
+        tvars = self.trainable_variables
+        restore.init_from_checkpoint(self.init_checkpoint, tvars)
+
+    def call(self, features):
+        input_ids_a = features["input_ids_a"]
+        input_ids_b = features["input_ids_b"]
+        y_true = tf.one_hot(features["label_id"], depth=2)
+        y_true = tf.reshape(y_true, shape=[-1, 2])
+
+        bert_layer_output_1 = self.bert_layer(
+            input_ids_a,
+            None,
+            None,
+            "bert",
+            self.use_one_hot_embeddings
+        )
+        bert_layer_output_2 = self.bert_layer(
+            input_ids_b,
+            None,
+            None,
+            "bert",
+            self.use_one_hot_embeddings
+        )
+        inputs = tf.concat([bert_layer_output_1, bert_layer_output_2], axis=-1)
+        logits = self.layer(inputs=inputs)
+        self.loss = tf.keras.losses.binary_crossentropy(from_logits=True, y_pred=logits, y_true=y_true)
+        self.add_loss(self.loss)
+        return tf.argmax(logits)
+
+
 class BertPretrainModel(tf.keras.Model):
 
     def __init__(self, config, is_training, init_checkpoint=None, use_one_hot_embeddings=False, **kwargs):
@@ -186,7 +235,7 @@ class BertPretrainModel(tf.keras.Model):
                         name="next_sentence_accuracy")
             self.next_sentence_mean_loss = tf.metrics.Mean(name="next_sentence_mean_loss")
             self.add_metric(self.next_sentence_mean_loss(next_sentence_loss), name="next_sentence_mean_loss")
-
+        self.summary()
         return bert_layer_output, total_loss
 
 

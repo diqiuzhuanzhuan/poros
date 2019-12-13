@@ -10,6 +10,8 @@ import unittest
 import modeling
 import run_pretraining
 import tensorflow as tf
+import tokenization
+from bert.run_classifier import SiameseProcessor
 
 
 class TestRunPretraining(unittest.TestCase):
@@ -122,6 +124,43 @@ class TestRunPretraining(unittest.TestCase):
 
         bert_pretrain_model.fit(d, epochs=100, steps_per_epoch=20)
         output = bert_pretrain_model(features)
+        print(output)
+
+    def test_siamese_bert_model(self):
+        bert_config = modeling.BertConfig.from_json_file("../bert_model/data/chinese_L-12_H-768_A-12/bert_config.json")
+        tokenizer = tokenization.FullTokenizer("../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt", do_lower_case=True)
+        max_seq_length = 128
+        batch_size = 8
+
+        bert_pretrain_model = run_pretraining.SiameseBertModel(
+            config=bert_config,
+            is_training=True,
+            init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
+        )
+
+        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+        siamese_processor = SiameseProcessor(tokenizer=tokenizer, max_seq_length=max_seq_length)
+        lines = [("我想买保险", "我还想买保险", "1"),
+                 ("我想买保险", "我不想买保险", "0"),
+                 ("我想去北京玩耍", "我打算去北京玩耍", "1"),
+                 ("我想去北京玩耍", "我不想去北京玩耍", "0"),
+                 ("能不能借钱给我呢", "可以借钱给我吗", "1"),
+                 ("我想借你钱", "我不想借你钱", "1")]
+
+        examples = siamese_processor._create_examples(lines, set_type="dev")
+        data = siamese_processor.convert_examples_to_features(examples)
+        input_ids_a = [ele.input_ids_a for ele in data]
+        input_ids_b = [ele.input_ids_b for ele in data]
+        label_id = [ele.label_id for ele in data]
+        d = tf.data.Dataset.from_tensor_slices((input_ids_a, input_ids_b, label_id))
+        d = d.apply(
+            tf.data.experimental.map_and_batch(
+                lambda x, y, z: {"input_ids_a": x, "input_ids_b": y, "label_id": [z]},
+                batch_size=2,
+                drop_remainder=True))
+        d = d.repeat()
+
+        bert_pretrain_model.fit(d, epochs=100, steps_per_epoch=2)
 
 
 if __name__ == "__main__":
