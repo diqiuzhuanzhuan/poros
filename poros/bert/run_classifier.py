@@ -452,6 +452,9 @@ class SiameseProcessor(DataProcessor):
 
         writer.close()
 
+    def decode_record(self, record):
+        return {"input_ids_a": record[0], "input_ids_b": record[1], "label_id": [record[2]]}
+
     def _convert_single_example(self, ex_index, example):
         label_map = {}
         for (i, label) in enumerate(self.get_labels()):

@@ -134,8 +134,8 @@ class SiameseBertModel(tf.keras.Model):
     def call(self, features):
         input_ids_a = features["input_ids_a"]
         input_ids_b = features["input_ids_b"]
-        y_true = tf.one_hot(features["label_id"], depth=2)
-        y_true = tf.reshape(y_true, shape=[-1, 2])
+        y_true = tf.reshape(features["label_id"], shape=[-1])
+        y_true = tf.one_hot(y_true, depth=2, dtype=tf.float32)
 
         bert_layer_output_1 = self.bert_layer(
             input_ids_a,

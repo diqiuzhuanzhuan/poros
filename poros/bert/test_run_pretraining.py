@@ -132,13 +132,13 @@ class TestRunPretraining(unittest.TestCase):
         max_seq_length = 128
         batch_size = 8
 
-        bert_pretrain_model = run_pretraining.SiameseBertModel(
+        bert_siamese_model = run_pretraining.SiameseBertModel(
             config=bert_config,
             is_training=True,
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
 
-        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+        bert_siamese_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
         siamese_processor = SiameseProcessor(tokenizer=tokenizer, max_seq_length=max_seq_length)
         lines = [("我想买保险", "我还想买保险", "1"),
                  ("我想买保险", "我不想买保险", "0"),
@@ -155,12 +155,12 @@ class TestRunPretraining(unittest.TestCase):
         d = tf.data.Dataset.from_tensor_slices((input_ids_a, input_ids_b, label_id))
         d = d.apply(
             tf.data.experimental.map_and_batch(
-                lambda x, y, z: {"input_ids_a": x, "input_ids_b": y, "label_id": [z]},
+                lambda x, y, z: {"input_ids_a": x, "input_ids_b": y, "label_id": z},
                 batch_size=2,
                 drop_remainder=True))
         d = d.repeat()
 
-        bert_pretrain_model.fit(d, epochs=100, steps_per_epoch=2)
+        bert_siamese_model.fit(d, epochs=100, steps_per_epoch=2)
 
 
 if __name__ == "__main__":
