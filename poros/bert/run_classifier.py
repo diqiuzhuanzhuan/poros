@@ -399,6 +399,11 @@ class SiameseProcessor(DataProcessor):
     def __init__(self, tokenizer, max_seq_length):
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
+        self.name_to_features = {
+            "input_ids_a": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "input_ids_b": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "label_id": tf.io.FixedLenFeature([1], tf.int64)
+        }
 
     def get_train_examples(self, data_dir):
         """See base class."""
@@ -451,6 +456,14 @@ class SiameseProcessor(DataProcessor):
             writer.write(about_tfrecord.serialize_example(features))
 
         writer.close()
+
+    def read_features_from_tfrecord(self, filename):
+        d = tf.data.TFRecordDataset("./output")
+        d = d.apply(
+            tf.data.experimental.map_and_batch(
+            lambda record: about_tfrecord.parse_example(record, self.name_to_features))
+        )
+        return d
 
     def decode_record(self, record):
         return {"input_ids_a": record[0], "input_ids_b": record[1], "label_id": [record[2]]}
