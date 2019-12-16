@@ -149,6 +149,7 @@ class TestRunPretraining(unittest.TestCase):
 
         examples = siamese_processor._create_examples(lines, set_type="dev")
         data = siamese_processor.convert_examples_to_features(examples)
+        #siamese_processor.write_features_into_tfrecord(filename="./siamese_data", features=data)
         input_ids_a = [ele.input_ids_a for ele in data]
         input_ids_b = [ele.input_ids_b for ele in data]
         label_id = [ele.label_id for ele in data]
@@ -156,7 +157,7 @@ class TestRunPretraining(unittest.TestCase):
         d = d.apply(
             tf.data.experimental.map_and_batch(
                 lambda x, y, z: {"input_ids_a": x, "input_ids_b": y, "label_id": z},
-                batch_size=2,
+                batch_size=3,
                 drop_remainder=True))
         d = d.repeat()
 

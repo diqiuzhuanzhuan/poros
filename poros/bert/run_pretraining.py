@@ -118,10 +118,6 @@ class SiameseBertModel(tf.keras.Model):
         self.use_one_hot_embeddings = use_one_hot_embeddings
         self.use_tpu = False
         self.init_checkpoint = init_checkpoint
-        self.mask_lm_layer = MaskLmLayer(bert_config=config)
-        self.next_sentence_layer = NextSentenceLayer(bert_config=config)
-        self.masked_lm_accuracy = None
-        self.masked_lm_mean_loss = None
         self.init_from_checkpoint()
         self.layer = tf.keras.layers.Dense(units=2, activation=tf.nn.softmax)
 
@@ -153,8 +149,9 @@ class SiameseBertModel(tf.keras.Model):
         )
         inputs = tf.concat([bert_layer_output_1, bert_layer_output_2], axis=-1)
         logits = self.layer(inputs=inputs)
-        self.loss = tf.keras.losses.binary_crossentropy(from_logits=True, y_pred=logits, y_true=y_true)
-        self.add_loss(self.loss)
+        loss = tf.keras.losses.binary_crossentropy(from_logits=True, y_pred=logits, y_true=y_true)
+        self.add_loss(loss)
+        self.summary()
         return tf.argmax(logits)
 
 

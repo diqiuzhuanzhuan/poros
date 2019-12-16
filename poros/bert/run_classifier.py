@@ -447,8 +447,8 @@ class SiameseProcessor(DataProcessor):
             features = collections.OrderedDict()
             features["input_ids_a"] = about_tfrecord._int64_feature(ele.input_ids_a)
             features["input_ids_b"] = about_tfrecord._int64_feature(ele.input_ids_b)
-            features["label_id"] = about_tfrecord._int64_feature(ele.label_id)
-            writer.write(about_tfrecord.serialize_example(ele))
+            features["label_id"] = about_tfrecord._int64_feature([ele.label_id])
+            writer.write(about_tfrecord.serialize_example(features))
 
         writer.close()
 
