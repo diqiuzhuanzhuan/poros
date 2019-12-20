@@ -150,19 +150,20 @@ class TestRunPretraining(unittest.TestCase):
         examples = siamese_processor._create_examples(lines, set_type="dev")
         data = siamese_processor.convert_examples_to_features(examples)
         siamese_processor.write_features_into_tfrecord(filename="./siamese_data", features=data)
-        d = siamese_processor.read_features_from_tfrecord(filename="./siamese_data").batch(batch_size=2)
-        input_ids_a = [ele.input_ids_a for ele in data]
-        input_ids_b = [ele.input_ids_b for ele in data]
-        label_id = [ele.label_id for ele in data]
+        d = siamese_processor.read_features_from_tfrecord(filename="./siamese_data", batch_size=2)
+        #input_ids_a = [ele.input_ids_a for ele in data]
+        #input_ids_b = [ele.input_ids_b for ele in data]
+        #label_id = [ele.label_id for ele in data]
         #d = tf.data.Dataset.from_tensor_slices((input_ids_a, input_ids_b, label_id))
         #d = d.apply(
         #    tf.data.experimental.map_and_batch(
         #        lambda x, y, z: {"input_ids_a": x, "input_ids_b": y, "label_id": z},
         #        batch_size=3,
         #        drop_remainder=True))
-        d = d.repeat()
+        #d = d.repeat()
 
-        bert_siamese_model.fit(d, epochs=100, steps_per_epoch=2)
+        #bert_siamese_model.fit(d, epochs=100, steps_per_epoch=2)
+        bert_siamese_model.evaluate(d)
 
 
 if __name__ == "__main__":

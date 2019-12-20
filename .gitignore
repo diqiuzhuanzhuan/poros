@@ -8,3 +8,4 @@ output
 export
 *.pyc
 text
+siamese_data

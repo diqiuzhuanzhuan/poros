@@ -427,7 +427,8 @@ class SiameseProcessor(DataProcessor):
         """See base class."""
         return ["0", "1"]
 
-    def _create_examples(self, lines, set_type):
+    @staticmethod
+    def _create_examples(lines, set_type):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(lines):
@@ -457,14 +458,16 @@ class SiameseProcessor(DataProcessor):
 
         writer.close()
 
-    def read_features_from_tfrecord(self, filename):
-        d = tf.data.TFRecordDataset("./output")
+    def read_features_from_tfrecord(self, filename, batch_size):
+        d = tf.data.TFRecordDataset(filename)
         d = d.apply(
             tf.data.experimental.map_and_batch(
-            lambda record: about_tfrecord.parse_example(record, self.name_to_features))
+            lambda record: about_tfrecord.parse_example(record, self.name_to_features),
+            batch_size=batch_size)
         )
         return d
 
+    @staticmethod
     def decode_record(self, record):
         return {"input_ids_a": record[0], "input_ids_b": record[1], "label_id": [record[2]]}
 
