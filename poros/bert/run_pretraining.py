@@ -120,6 +120,7 @@ class SiameseBertModel(tf.keras.Model):
         self.init_checkpoint = init_checkpoint
         self.init_from_checkpoint()
         self.layer = tf.keras.layers.Dense(units=2, activation=tf.nn.softmax)
+        self.accuracy_metric = tf.keras.metrics.Accuracy()
 
     def init_from_checkpoint(self):
         if not self.init_checkpoint:
@@ -150,6 +151,10 @@ class SiameseBertModel(tf.keras.Model):
         inputs = tf.concat([bert_layer_output_1, bert_layer_output_2], axis=-1)
         logits = self.layer(inputs=inputs)
         loss = tf.keras.losses.binary_crossentropy(from_logits=True, y_pred=logits, y_true=y_true)
+        if not self.built:
+            y_pred = tf.one_hot(tf.argmax(logits), depth=2, dtype=tf.float32)
+            self.accuracy_metric(y_true=y_true, y_pred=y_pred)
+            self.add_metric(self.accuracy_metric)
         self.add_loss(loss)
         self.summary()
         return tf.argmax(logits)
@@ -169,6 +174,10 @@ class BertPretrainModel(tf.keras.Model):
         self.masked_lm_accuracy = None
         self.masked_lm_mean_loss = None
         self.init_from_checkpoint()
+        self.masked_lm_mean_loss_metric = tf.metrics.Mean(name="masked_lm_mean_loss")
+        self.masked_lm_accuracy_metric = tf.metrics.Accuracy(name="masked_lm_accuracy")
+        self.next_sentence_accuracy_metric = tf.metrics.Accuracy(name="next_sentence_accuracy")
+        self.next_sentence_mean_loss_metric = tf.metrics.Mean(name="next_sentence_mean_loss")
 
     def init_from_checkpoint(self):
         if not self.init_checkpoint:
@@ -214,24 +223,16 @@ class BertPretrainModel(tf.keras.Model):
             masked_lm_log_probs, axis=-1, output_type=tf.int32)
         masked_lm_ids = tf.reshape(masked_lm_ids, [-1])
         masked_lm_weights = tf.reshape(masked_lm_weights, [-1])
-        if not self.built:
-            self.masked_lm_accuracy = tf.metrics.Accuracy(name="masked_lm_accuracy")
-            self.masked_lm_accuracy(y_pred=masked_lm_predictions, y_true=masked_lm_ids, sample_weight=masked_lm_weights)
-            self.add_metric(self.masked_lm_accuracy,
-                        aggregation='mean',
-                        name="masked_lm_accuracy")
-            self.masked_lm_mean_loss = tf.metrics.Mean(name="masked_lm_mean_loss")
-            self.add_metric(self.masked_lm_mean_loss(masked_lm_example_loss,
-                                                 sample_weight=masked_lm_weights),
-                        name="masked_lm_mean_loss")
+        masked_lm_accuracy_metric = self.masked_lm_accuracy_metric(y_pred=masked_lm_predictions, y_true=masked_lm_ids, sample_weight=masked_lm_weights)
+        masked_lm_mean_loss_metric = self.masked_lm_mean_loss_metric(masked_lm_example_loss, sample_weight=masked_lm_weights)
+        next_sentence_accuracy_metric = self.next_sentence_accuracy_metric(y_pred=next_sentence_predictions, y_true=next_sentence_labels)
+        next_sentence_loss_metric = self.next_sentence_mean_loss_metric(next_sentence_loss)
 
-            self.next_sentence_accuracy = tf.metrics.Accuracy(name="next_sentence_accuracy")
-            self.add_metric(self.next_sentence_accuracy(y_pred=next_sentence_predictions,
-                                                    y_true=next_sentence_labels),
-                        aggregation='mean',
-                        name="next_sentence_accuracy")
-            self.next_sentence_mean_loss = tf.metrics.Mean(name="next_sentence_mean_loss")
-            self.add_metric(self.next_sentence_mean_loss(next_sentence_loss), name="next_sentence_mean_loss")
+        if not self.built:
+            self.add_metric(masked_lm_accuracy_metric, aggregation='mean', name="masked_lm_accuracy")
+            self.add_metric(masked_lm_mean_loss_metric, name="masked_lm_mean_loss")
+            self.add_metric(next_sentence_accuracy_metric, aggregation='mean', name="next_sentence_accuracy")
+            self.add_metric(next_sentence_loss_metric, name="next_sentence_mean_loss")
         self.summary()
         return bert_layer_output, total_loss
 
