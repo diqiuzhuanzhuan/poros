@@ -1312,7 +1312,6 @@ class TransformerLayer(tf.keras.layers.Layer):
             attention_heads = []
             attention_head = attention_layer(layer_input, layer_input, layer_input, attention_mask)
             attention_heads.append(attention_head)
-            attention_output = None
             if len(attention_heads) == 1:
                 attention_output = attention_heads[0]
             else:
