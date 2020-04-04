@@ -150,8 +150,10 @@ class SiameseBertModel(tf.keras.Model):
         )
         inputs = tf.concat([bert_layer_output_1, bert_layer_output_2], axis=-1)
         logits = self.layer(inputs=inputs)
-        loss = tf.keras.losses.binary_crossentropy(from_logits=True, y_pred=logits, y_true=y_true)
-        y_pred = tf.one_hot(tf.argmax(logits), depth=2, dtype=tf.float32)
+
+        #loss = tf.keras.losses.binary_crossentropy(from_logits=False, y_pred=logits, y_true=y_true)
+        loss = tf.keras.losses.categorical_crossentropy(from_logits=False, y_pred=logits, y_true=y_true)
+        y_pred = tf.one_hot(tf.argmax(logits, axis=-1), depth=2, dtype=tf.float32)
         accuracy_metric = self.accuracy_metric(y_true=y_true, y_pred=y_pred)
         if not self.built:
             self.add_metric(accuracy_metric)

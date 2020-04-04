@@ -394,6 +394,29 @@ class ColaProcessor(DataProcessor):
         return examples
 
 
+class SimpleDataProcessor(DataProcessor):
+
+    def __init__(self, tokenizer, max_seq_length):
+        self.tokenizer = tokenizer
+        self.max_seq_length = max_seq_length
+        self.name_to_features = {
+            "input_ids": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "label_id": tf.io.FixedLenFeature([1], tf.int64)
+        }
+
+    @staticmethod
+    def _create_examples(lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            text = tokenization.convert_to_unicode(line[0])
+            label = tokenization.convert_to_unicode(line[1])
+            examples.append(
+                InputExample(guid=guid, text_a=text, text_b=None, label=label))
+        return examples
+
+
 class SiameseProcessor(DataProcessor):
 
     def __init__(self, tokenizer, max_seq_length):

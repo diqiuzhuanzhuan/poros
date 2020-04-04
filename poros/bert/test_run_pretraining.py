@@ -94,7 +94,7 @@ class TestRunPretraining(unittest.TestCase):
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
 
-        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
         d = tf.data.TFRecordDataset("./output")
         # Since we evaluate for a fixed number of steps we don't want to encounter
         # out-of-range exceptions.
@@ -122,9 +122,18 @@ class TestRunPretraining(unittest.TestCase):
                 batch_size=8,
                 drop_remainder=True))
 
-        bert_pretrain_model.fit(d, epochs=5, steps_per_epoch=20)
+        bert_pretrain_model.fit(d, epochs=1, steps_per_epoch=10)
+        import time
+        t1 = time.time()
         output = bert_pretrain_model(features)
+        print(time.time()-t1)
+        #output = bert_pretrain_model.predict(features)
         print(output)
+        #bert_pretrain_model.save_weights("./bert_pretrain", save_format='tf')
+
+        #bert_pretrain_model = tf.keras.models.load_model("./bert_pretrain")
+        #output = bert_pretrain_model(features)
+        #print(output)
 
     def test_siamese_bert_model(self):
         bert_config = modeling.BertConfig.from_json_file("../bert_model/data/chinese_L-12_H-768_A-12/bert_config.json")
@@ -138,23 +147,24 @@ class TestRunPretraining(unittest.TestCase):
             init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
 
-        bert_siamese_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+        bert_siamese_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001))
         siamese_processor = SiameseProcessor(tokenizer=tokenizer, max_seq_length=max_seq_length)
         lines = [("我想买保险", "我还想买保险", "1"),
                  ("我想买保险", "我不想买保险", "0"),
                  ("我想去北京玩耍", "我打算去北京玩耍", "1"),
                  ("我想去北京玩耍", "我不想去北京玩耍", "0"),
                  ("能不能借钱给我呢", "可以借钱给我吗", "1"),
-                 ("我想借你钱", "我不想借你钱", "1")]
+                 ("我想借你钱", "我不想借你钱", "0")]
 
         examples = siamese_processor._create_examples(lines, set_type="dev")
         data = siamese_processor.convert_examples_to_features(examples)
         siamese_processor.write_features_into_tfrecord(filename="./siamese_data", features=data)
-        d = siamese_processor.read_features_from_tfrecord(filename="./siamese_data", batch_size=2)
+        d = siamese_processor.read_features_from_tfrecord(filename="./siamese_data", batch_size=6)
         d = d.repeat()
 
-        bert_siamese_model.fit(d, epochs=100, steps_per_epoch=5)
-        #bert_siamese_model.evaluate(d)
+        bert_siamese_model.fit(d, epochs=10, steps_per_epoch=20)
+        bert_siamese_model.evaluate(d, steps=3)
+        print(bert_siamese_model.predict(d, steps=3))
 
 
 if __name__ == "__main__":
