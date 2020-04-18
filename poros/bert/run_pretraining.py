@@ -26,6 +26,7 @@ from absl import flags
 from absl import app
 import logging
 from poros_train import restore
+import tensorflow_addons as tfa
 
 
 FLAGS = flags.FLAGS
@@ -119,8 +120,7 @@ class SiameseBertModel(tf.keras.Model):
         self.use_tpu = False
         self.init_checkpoint = init_checkpoint
         self.init_from_checkpoint()
-        self.layer = tf.keras.layers.Dense(units=2, activation=tf.nn.softmax)
-        self.accuracy_metric = tf.keras.metrics.Accuracy()
+        self.loss_layer = tfa.losses.ContrastiveLoss()
 
     def init_from_checkpoint(self):
         if not self.init_checkpoint:
@@ -132,7 +132,6 @@ class SiameseBertModel(tf.keras.Model):
         input_ids_a = features["input_ids_a"]
         input_ids_b = features["input_ids_b"]
         y_true = tf.reshape(features["label_id"], shape=[-1])
-        y_true = tf.one_hot(y_true, depth=2, dtype=tf.float32)
 
         bert_layer_output_1 = self.bert_layer(
             input_ids_a,
@@ -148,18 +147,12 @@ class SiameseBertModel(tf.keras.Model):
             "bert",
             self.use_one_hot_embeddings
         )
-        inputs = tf.concat([bert_layer_output_1, bert_layer_output_2], axis=-1)
-        logits = self.layer(inputs=inputs)
 
-        #loss = tf.keras.losses.binary_crossentropy(from_logits=False, y_pred=logits, y_true=y_true)
-        loss = tf.keras.losses.categorical_crossentropy(from_logits=False, y_pred=logits, y_true=y_true)
-        y_pred = tf.one_hot(tf.argmax(logits, axis=-1), depth=2, dtype=tf.float32)
-        accuracy_metric = self.accuracy_metric(y_true=y_true, y_pred=y_pred)
-        if not self.built:
-            self.add_metric(accuracy_metric)
+        y_pred = tf.linalg.norm(bert_layer_output_2 - bert_layer_output_1, axis=-1)
+        loss = self.loss_layer(y_true=y_true, y_pred=y_pred)
+
         self.add_loss(loss)
-        self.summary()
-        return tf.argmax(logits)
+        return y_pred
 
 
 class BertPretrainModel(tf.keras.Model):

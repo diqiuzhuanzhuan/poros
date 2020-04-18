@@ -16,7 +16,7 @@ def _bytes_feature(value):
 
 def _float_feature(value):
     """Returns a float_list from a float / double."""
-    return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+    return tf.train.Feature(float_list=tf.train.FloatList(value=list(value)))
 
 
 def _int64_feature(value):
@@ -28,6 +28,14 @@ def _parse_function(example_proto, feature_description):
     """Parse the input tf.Example proto using the dictionary above."""
     return tf.io.parse_single_example(example_proto, feature_description)
 
+def create_int_feature(values):
+    return _int64_feature(values)
+
+def create_float_feature(values):
+    return _float_feature(values)
+
+def create_bytes_feature(value):
+    return _bytes_feature(value)
 
 def serialize_example(feature):
     """

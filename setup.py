@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.40",
+    version="0.0.41",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",
@@ -24,6 +24,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "tensorflow",
+        "tensorflow-addons",
         "matplotlib",
         "seqeval",
     ],
