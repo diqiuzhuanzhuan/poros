@@ -481,14 +481,5 @@ if __name__ == "__main__":
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
     ptdm.main(input_file, output_file)
-    """
-    random.seed(101)
-    s = Sample(do_whole_word=True)
-    x = ["SOS", "你", "好", "我", "是", "20", "##19", "一", "个", "好",
-         "的", "人", "EOS", "你", "呢", "你", "在", "干", "嘛", "呢", "EOS"]
-    print(type(x))
-    M = s.block_wise_masking(x, max_predictions_per_seq=1, mask_ratio=0.15)
-    print(M)
-    """
