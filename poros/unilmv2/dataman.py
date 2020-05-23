@@ -40,7 +40,7 @@ class Sample(object):
                 l = random.randint(2, 6)
             else:
                 l = 1
-            sub_list = list(range(p, p+l-1+1))
+            sub_list = list(range(p, min(p+l-1+1, x_length)))
             if m_set.intersection(set(sub_list)):
                 continue
             if not_include_mask.intersection(set(sub_list)):
