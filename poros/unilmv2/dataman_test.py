@@ -21,8 +21,10 @@ class SampleTest(unittest.TestCase):
         for i in range(1000):
             M = self.sample.block_wise_masking(x, max_predictions_per_seq=0, mask_ratio=0.15)
             self.assertFalse("[MASK]" in M[0])
+            self.assertLessEqual(len(M[3]), int(len(x) * 0.15))
             M = self.sample.block_wise_masking(x, max_predictions_per_seq=1, mask_ratio=0.15)
             self.assertTrue("[MASK]" in M[0])
+            self.assertLessEqual(len(M[3]), int(len(x) * 0.15))
             print(M)
 
 
