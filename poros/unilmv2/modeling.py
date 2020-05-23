@@ -20,7 +20,7 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
 
-    def call(self, input_ids, use_one_hot_embeddings):
+    def call(self, input_ids, use_one_hot_embeddings=False):
         """Looks up words embeddings for id tensor.
 
         Args:
