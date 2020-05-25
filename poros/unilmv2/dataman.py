@@ -108,7 +108,6 @@ class PreTrainingDataMan(object):
         self.short_seq_prob = short_seq_prob
         self.random_seed = random_seed
 
-
     def write_instance_to_example_files(self, instances, tokenizer, max_seq_length,
                                         max_predictions_per_seq, output_files):
         """Create TF example files from `TrainingInstance`s."""
@@ -180,7 +179,6 @@ class PreTrainingDataMan(object):
             writer.close()
         tf.get_logger().info("Wrote %d total instances", total_written)
 
-
     def create_training_instances(self, input_files, tokenizer, max_seq_length,
                                   dupe_factor, short_seq_prob, masked_lm_prob,
                                   max_predictions_per_seq, rng):
@@ -223,7 +221,6 @@ class PreTrainingDataMan(object):
 
         rng.shuffle(instances)
         return instances
-
 
     def create_instances_from_document(self,
             all_documents, document_index, max_seq_length, short_seq_prob,
@@ -350,8 +347,6 @@ class PreTrainingDataMan(object):
 
         return instances
 
-
-
     def create_masked_lm_predictions(self, tokens, masked_lm_prob,
                                      max_predictions_per_seq, vocab_words, rng, do_whole_word_mask=False):
         """Creates the predictions for the masked LM objective."""
@@ -444,7 +439,6 @@ class PreTrainingDataMan(object):
                 del trunc_tokens[0]
             else:
                 trunc_tokens.pop()
-
 
     def main(self, input_file, output_file):
         import logging
