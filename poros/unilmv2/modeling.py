@@ -80,6 +80,6 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
         else:
             output = tf.gather(self.embedding_table, flat_input_ids)
 
-        input_sahpe = about_tensor.get_shape(input_ids)
-        output = tf.reshape(output, input_sahpe[0:-1] + [input_sahpe[-1] * self.embedding_size])
+        input_shape = about_tensor.get_shape(input_ids)
+        output = tf.reshape(output, input_shape[0:-1] + [input_shape[-1] * self.embedding_size])
         return output, self.embedding_table
