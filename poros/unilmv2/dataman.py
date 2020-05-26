@@ -45,6 +45,8 @@ class Sample(object):
                 continue
             if not_include_mask.intersection(set(sub_list)):
                 continue
+            if len(sub_list) + len(m_set) > m_length:
+                continue
 
             if sub_list.__len__():
                 pseudo_masked_lm_positions.append(sub_list)

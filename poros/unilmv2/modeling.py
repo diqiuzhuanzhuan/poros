@@ -24,7 +24,8 @@ class EmbeddingLookupLayer(tf.keras.layers.Layer):
         """Looks up words embeddings for id tensor.
 
         Args:
-            input_ids: int32 Tensor of shape [batch_size, seq_length] containindddddg word
+            input_ids: int32 Tensor of shape [batch_size, seq_length] containing word
+            use_one_hot_embeddings: boolean, use one hot form
 
         Returns:
             float Tensor of shape [batch_size, seq_length, embedding_size].
@@ -64,6 +65,7 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
 
         Args:
             input_ids: int32 Tensor of shape [batch_size, seq_length] containing word
+            use_one_hot_embeddings: boolean, use one hot form
 
         Returns:
             float Tensor of shape [batch_size, seq_length, embedding_size].
