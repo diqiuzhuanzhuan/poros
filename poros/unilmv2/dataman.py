@@ -52,13 +52,30 @@ class Sample(object):
                 pseudo_masked_lm_positions.append(sub_list)
                 pesudo_masked_lm_labels.append([tokens[i] for i in sub_list])
                 m_set = m_set.union(set(sub_list))
-        output_tokens = tokens.copy()
-        for index in m_set:
-            output_tokens[index] = "[MASK]"
+
+        sorted_pseudo_masked_lm_positions = sorted(pseudo_masked_lm_positions)
+        output_tokens = []
+        output_tokens_positions = []
+        for pos, ele in enumerate(tokens):
+            if len(sorted_pseudo_masked_lm_positions):
+                pseudo_masked_positions = sorted_pseudo_masked_lm_positions[0]
+            else:
+                pseudo_masked_positions = []
+            output_tokens.append(ele)
+            output_tokens_positions.append(pos)
+            if pos in pseudo_masked_positions and (pos + 1) not in pseudo_masked_positions:
+                for pseudo_position in pseudo_masked_positions:
+                    output_tokens.append("[Pseudo]")
+                    output_tokens_positions.append(pseudo_position)
+                for masked_position in pseudo_masked_positions:
+                    output_tokens.append("[MASK]")
+                    output_tokens_positions.append(masked_position)
+                sorted_pseudo_masked_lm_positions.pop(0)
+
         masked_lm_positions = sorted(list(m_set))
         masked_lm_labels = [tokens[i] for i in masked_lm_positions]
 
-        return (output_tokens, masked_lm_positions, masked_lm_labels,
+        return (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
                 pseudo_masked_lm_positions, pesudo_masked_lm_labels)
 
 

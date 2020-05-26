@@ -339,7 +339,7 @@ class SiameseProcessor(DataProcessor):
         writer.close()
 
     def read_features_from_tfrecord(self, filename):
-        d = tf.data.TFRecordDataset("./output")
+        d = tf.data.TFRecordDataset(filename)
         d = d.apply(
             tf.data.experimental.map_and_batch(
                 lambda record: about_tfrecord.parse_example(record, self.name_to_features))
