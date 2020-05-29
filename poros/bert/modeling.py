@@ -824,7 +824,6 @@ class AttentionLayer(tf.keras.layers.Layer):
         return context_layer
 
 
-
 class TransformerLayer(tf.keras.layers.Layer):
 
     def __init__(self,

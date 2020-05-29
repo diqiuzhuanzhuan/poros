@@ -7,9 +7,9 @@ email: diqiuzhuanzhuan@gmail.com
 """
 import collections
 import random
-from bert import tokenization
+from poros.bert import tokenization
 import tensorflow as tf
-from poros_dataset import about_tfrecord
+from poros.poros_dataset import about_tfrecord
 
 
 class Sample(object):

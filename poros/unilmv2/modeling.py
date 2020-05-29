@@ -85,3 +85,14 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
         input_shape = about_tensor.get_shape(input_ids)
         output = tf.reshape(output, input_shape[0:-1] + [input_shape[-1] * self.embedding_size])
         return output, self.embedding_table
+
+
+class AttentionLayer(tf.keras.layers.Layer):
+
+    def __init__(self):
+        super(AttentionLayer, self).__init__()
+
+
+class TransformerLayer(tf.keras.layers.Layer):
+    def __init__(self):
+        super(TransformerLayer, self).__init__()

@@ -6,10 +6,10 @@ email: diqiuzhuanzhuan@gmail.com
 
 """
 import unittest
-from unilmv2.modeling import PositionEmbeddingLayer
-from unilmv2.modeling import EmbeddingLookupLayer
+from poros.unilmv2.modeling import PositionEmbeddingLayer
+from poros.unilmv2.modeling import EmbeddingLookupLayer
 import tensorflow as tf
-from poros_dataset.about_tensor import get_shape
+from poros.poros_dataset.about_tensor import get_shape
 
 
 class ModelingTest(unittest.TestCase):

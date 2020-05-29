@@ -8,33 +8,41 @@ email: diqiuzhuanzhuan@gmail.com
 
 import tensorflow as tf
 from poros.poros_train import some_layer
+from poros_dataset.about_tensor import get_shape
 
 
 class SomeLayerTest(tf.test.TestCase):
 
     def test_dot_product_attention(self):
 
-        with self.test_session() as sess:
-            query = tf.get_variable("w", shape=[3, 4], initializer=tf.constant_initializer(
-                [
-                    [1, 1, 1, 1],
-                    [2, 2, 2, 2],
-                    [3, 3, 3, 3],
-                ]
-            ))
+        query = tf.Variable(initial_value=[
+            [1.0, 1.0, 1.0, 1.0],
+            [2.0, 2.0, 2.0, 2.0],
+            [3.0, 3.0, 3.0, 3.0],
+        ])
 
-            out = some_layer.dot_product_attention(q=query, k=query, v=query, scale=True, bias=None)
-            init_op = tf.group(tf.global_variables_initializer(),
-                               tf.local_variables_initializer())
-            sess.run(init_op)
-            out = sess.run(out)
-            out_ = tf.constant([
-                [2.85093709, 2.85093709, 2.85093709, 2.85093709],
-                [2.98136107, 2.98136107, 2.98136107, 2.98136107],
-                [2.99751513, 2.99751513, 2.99751513, 2.99751513]
-            ]
-            )
-            self.assertAllClose(out, out_)
+        out = some_layer.dot_product_attention(q=query, k=query, v=query, scale=True, bias=None)
+        out_ = tf.constant([
+            [2.85093709, 2.85093709, 2.85093709, 2.85093709],
+            [2.98136107, 2.98136107, 2.98136107, 2.98136107],
+            [2.99751513, 2.99751513, 2.99751513, 2.99751513]
+        ], dtype=tf.float32
+        )
+        self.assertAllClose(out, out_)
+
+    def test_embedding_lookup_layer(self):
+        embedding_lookup_layer = some_layer.EmbeddingLookupLayer(vocab_size=100, embedding_size=128)
+        input_id = tf.constant([[1, 1, 2, 1]])
+        look_up, embedding_table = embedding_lookup_layer(input_id)
+        self.assertEqual(get_shape(look_up), [1, 4, 128])
+        self.assertEqual(get_shape(embedding_table), [100, 128])
+
+    def test_position_embedding_layer(self):
+        position_embedding_layer = some_layer.PositionEmbeddingLayer(position_size=128, embedding_size=128)
+        input_id = tf.constant([[1, 2, 3, 4]])
+        look_up, embedding_table = position_embedding_layer(input_id)
+        self.assertEqual(get_shape(look_up), [1, 4, 128])
+        self.assertEqual(get_shape(embedding_table), [128, 128])
 
 
 if __name__ == "__main__":
