@@ -52,6 +52,8 @@ def get_activation(activation_string):
         return tf.nn.elu
     elif act == "leaky_relu":
         return tf.nn.leaky_relu
+    elif act == "swish":
+        return swish
     else:
         raise ValueError("Unsupported activation: %s" % act)
 
@@ -71,4 +73,7 @@ def gelu(x):
         (np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3)))))
     return x * cdf
 
+
+def swish(x):
+    return x * tf.sigmoid(x)
 
