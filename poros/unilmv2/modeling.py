@@ -22,6 +22,9 @@ class Unilmv2Model(tf.keras.Model):
         super(Unilmv2Model, self).__init__(*args, **kwargs)
         self.config = kwargs["config"]
 
+    def call(self, inputs, **kwargs):
+        pass
+
 
 class InputEmbeddingLayer(tf.keras.layers.Layer):
 
@@ -78,7 +81,3 @@ class AutoEncodingModel(tf.keras.Model):
             attention_probs_dropout_prob=config.attention_probs_dropout_prob)
 
 
-class Unilmv2Layer(tf.keras.layers.Layer):
-
-    def __init__(self):
-        pass

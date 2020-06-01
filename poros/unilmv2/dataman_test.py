@@ -28,5 +28,5 @@ class SampleTest(unittest.TestCase):
             print(M)
 
 
-
-
+if __name__ == "__main__":
+    unittest.main()
