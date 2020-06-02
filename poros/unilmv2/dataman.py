@@ -85,12 +85,13 @@ MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"]
 class TrainingInstance(object):
     """A single training instance (sentence pair)."""
 
-    def __init__(self, tokens, segment_ids, masked_lm_positions, masked_lm_labels,
+    def __init__(self, tokens, output_tokens_positions, segment_ids, masked_lm_positions, masked_lm_labels,
                  pseudo_masked_lm_positions, pseudo_masked_lm_labels,
                  is_random_next):
         self.tokens = tokens
         self.segment_ids = segment_ids
         self.is_random_next = is_random_next
+        self.output_tokens_positions = output_tokens_positions
         self.masked_lm_positions = masked_lm_positions
         self.masked_lm_labels = masked_lm_labels
         self.pseudo_masked_lm_positions = pseudo_masked_lm_positions
@@ -116,11 +117,11 @@ class TrainingInstance(object):
 class PreTrainingDataMan(object):
 
     def __init__(self, vocab_file, masked_lm_prob=0.15, max_predictions_per_seq=20, do_lower_case=True, max_seq_length=128,
-                 dupe_factor=10, short_seq_prob=0.1, random_seed=100):
+                 dupe_factor=10, short_seq_prob=0.1, do_whole_word=False, random_seed=100):
         self.vocab_file = vocab_file
         self.do_lower_case = do_lower_case
         self.max_seq_length = max_seq_length
-        self.sample = Sample(do_whole_word=False)
+        self.sample = Sample(do_whole_word=do_whole_word)
         self.dupe_factor = dupe_factor
         self.masked_lm_prob = masked_lm_prob
         self.max_predictions_per_seq = max_predictions_per_seq
@@ -141,17 +142,25 @@ class PreTrainingDataMan(object):
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
             input_mask = [1] * len(input_ids)
             segment_ids = list(instance.segment_ids)
-            assert len(input_ids) <= max_seq_length
 
-            while len(input_ids) < max_seq_length:
+            origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
+
+            assert origin_input_ids_length <= max_seq_length
+
+            while origin_input_ids_length < max_seq_length:
                 input_ids.append(0)
                 input_mask.append(0)
                 segment_ids.append(0)
+                origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
 
-            assert len(input_ids) == max_seq_length
-            assert len(input_mask) == max_seq_length
-            assert len(segment_ids) == max_seq_length
+            assert origin_input_ids_length == max_seq_length
+            print(len(instance.segment_ids))
+            print(len(segment_ids))
+            print(len(instance.masked_lm_positions))
+            assert len(input_mask) - (2 * len(instance.masked_lm_positions)) == max_seq_length
+            assert len(segment_ids) - (2 * len(instance.masked_lm_positions)) == max_seq_length
 
+            output_tokens_positions = instance.output_tokens_positions
             masked_lm_positions = list(instance.masked_lm_positions)
             masked_lm_ids = tokenizer.convert_tokens_to_ids(instance.masked_lm_labels)
             masked_lm_weights = [1.0] * len(masked_lm_ids)
@@ -166,6 +175,7 @@ class PreTrainingDataMan(object):
             features = collections.OrderedDict()
             features["input_ids"] = about_tfrecord.create_int_feature(input_ids)
             features["input_mask"] = about_tfrecord.create_int_feature(input_mask)
+            features["output_tokens_positions"] = about_tfrecord.create_int_feature(output_tokens_positions)
             features["segment_ids"] = about_tfrecord.create_int_feature(segment_ids)
             features["masked_lm_positions"] = about_tfrecord.create_int_feature(masked_lm_positions)
             features["masked_lm_ids"] = about_tfrecord.create_int_feature(masked_lm_ids)
@@ -342,8 +352,17 @@ class PreTrainingDataMan(object):
                     tokens.append("[EOS]")
                     segment_ids.append(1)
 
-                    (tokens, masked_lm_positions, masked_lm_labels, pseudo_masked_lm_positions, pseudo_masked_lm_labels) =\
+                    (tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels, pseudo_masked_lm_positions, pseudo_masked_lm_labels) =\
                         self.sample.block_wise_masking(tokens, max_predictions_per_seq, masked_lm_prob)
+                    segment_id = 0
+                    segment_ids = []
+                    for token in tokens:
+                        segment_ids.append(segment_id)
+                        if token == "[SOS]":
+                            segment_id = 0
+                        if token == "[EOS]":
+                            segment_id = 1
+
                     """
                     (tokens, masked_lm_positions,
                      masked_lm_labels) = self.create_masked_lm_predictions(
@@ -354,6 +373,7 @@ class PreTrainingDataMan(object):
                         tokens=tokens,
                         segment_ids=segment_ids,
                         is_random_next=is_random_next,
+                        output_tokens_positions=output_tokens_positions,
                         masked_lm_positions=masked_lm_positions,
                         masked_lm_labels=masked_lm_labels,
                         pseudo_masked_lm_positions=pseudo_masked_lm_positions,

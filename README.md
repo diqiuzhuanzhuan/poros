@@ -17,14 +17,14 @@ python setup install
 
 Some code is from other people, and some is from me.
 
-# bert_model
+# bert
 usage:
 - create pretrain data
 
 ```python
-from poros.bert_model import create_pretraining_data
+from poros.bert import create_pretraining_data
 
->>> create_pretraining_data.create_data(input_file="./test_data/sample_text.txt",
+>>> create_pretraining_data.main(input_file="./test_data/sample_text.txt",
 output_file="./test_data/output", vocab_file="./test_data/vocab.txt")
 ```
 
