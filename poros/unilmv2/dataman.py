@@ -154,9 +154,6 @@ class PreTrainingDataMan(object):
                 origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
 
             assert origin_input_ids_length == max_seq_length
-            print(len(instance.segment_ids))
-            print(len(segment_ids))
-            print(len(instance.masked_lm_positions))
             assert len(input_mask) - (2 * len(instance.masked_lm_positions)) == max_seq_length
             assert len(segment_ids) - (2 * len(instance.masked_lm_positions)) == max_seq_length
 
