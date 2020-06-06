@@ -10,6 +10,7 @@ import random
 from poros.bert import tokenization
 import tensorflow as tf
 import numpy as np
+import os
 from poros.poros_dataset import about_tfrecord
 
 
@@ -174,20 +175,22 @@ class PreTrainingDataMan(object):
             segment_ids = list(instance.segment_ids)
 
             origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
+            output_tokens_positions = instance.output_tokens_positions
 
             assert origin_input_ids_length <= max_seq_length
 
-            while origin_input_ids_length < max_seq_length:
+            #while origin_input_ids_length < max_seq_length:
+            while len(input_ids) < (self.max_seq_length + 2*self.max_predictions_per_seq):
                 input_ids.append(0)
+                output_tokens_positions.append(0)
                 input_mask = np.pad(input_mask, [(0, 1), (0, 1)])
                 segment_ids.append(0)
-                origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
+            origin_input_ids_length = len(input_ids) - 2 * self.max_predictions_per_seq
 
             assert origin_input_ids_length == max_seq_length
-            assert len(input_mask) - (2 * len(instance.masked_lm_positions)) == max_seq_length
-            assert len(segment_ids) - (2 * len(instance.masked_lm_positions)) == max_seq_length
+            assert len(input_mask) - (2 * self.max_predictions_per_seq) == max_seq_length
+            assert len(segment_ids) - (2 * self.max_predictions_per_seq) == max_seq_length
 
-            output_tokens_positions = instance.output_tokens_positions
             masked_lm_positions = list(instance.masked_lm_positions)
             masked_lm_ids = tokenizer.convert_tokens_to_ids(instance.masked_lm_labels)
             masked_lm_weights = [1.0] * len(masked_lm_ids)
@@ -198,15 +201,22 @@ class PreTrainingDataMan(object):
                 masked_lm_positions.append(0)
                 masked_lm_ids.append(0)
                 masked_lm_weights.append(0.0)
+                pseudo_masked_lm_positions.append([0])
+                pseudo_masked_lm_ids.append([0])
+
+            pseudo_masked_sub_list_len = [len(sub_list) for sub_list in pseudo_masked_lm_positions]
+            while len(pseudo_masked_sub_list_len) < max_predictions_per_seq:
+                pseudo_masked_sub_list_len.append(0)
 
             next_sentence_label = 1 if instance.is_random_next else 0
 
             features = collections.OrderedDict()
             features["input_ids"] = about_tfrecord.create_int_feature(input_ids)
             # convert array to a byte_feature
-            features["input_mask"] = about_tfrecord.create_bytes_feature(about_tfrecord.serialize_array(input_mask))
+
             flatten_pseudo_masked_lm_positions = [_ for sub_list in pseudo_masked_lm_positions for _ in sub_list]
             features["pseudo_masked_lm_positions"] = about_tfrecord.create_int_feature(flatten_pseudo_masked_lm_positions)
+            features["pseudo_masked_sub_list_len"] = about_tfrecord.create_int_feature(pseudo_masked_sub_list_len)
             flatten_pseudo_masked_lm_ids = [_ for sub_list in pseudo_masked_lm_ids for _ in sub_list]
             features["pseudo_masked_lm_ids"] = about_tfrecord.create_int_feature(flatten_pseudo_masked_lm_ids)
             features["output_tokens_positions"] = about_tfrecord.create_int_feature(output_tokens_positions)
@@ -511,7 +521,7 @@ class PreTrainingDataMan(object):
             else:
                 trunc_tokens.pop()
 
-    def main(self, input_file, output_file):
+    def create_pretraining_data(self, input_file, output_file):
         import logging
         tf.get_logger().setLevel(logging.INFO)
 
@@ -540,6 +550,49 @@ class PreTrainingDataMan(object):
         self.write_instance_to_example_files(instances, tokenizer, self.max_seq_length,
                                         self.max_predictions_per_seq, output_files)
 
+    def read_data_from_tfrecord(self, input_files, is_training, batch_size=128, num_cpu_threads=0):
+
+        name_to_features = {
+            "input_ids": tf.io.FixedLenFeature([self.max_seq_length+self.max_predictions_per_seq*2], tf.int64),
+            "pseudo_masked_lm_positions": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "pseudo_masked_sub_list_len": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "pseudo_masked_lm_ids": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "output_tokens_positions": tf.io.FixedLenFeature([self.max_seq_length+self.max_predictions_per_seq*2], tf.int64),
+            "segment_ids": tf.io.FixedLenFeature([self.max_seq_length+self.max_predictions_per_seq*2], tf.int64),
+            "masked_lm_positions": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "masked_lm_ids": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "masked_lm_weights": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.float32),
+            "next_sentence_labels": tf.io.FixedLenFeature([], tf.int64)
+        }
+
+        if is_training:
+            d = tf.data.Dataset.from_tensor_slices(tf.constant(input_files))
+            d = d.shuffle(buffer_size=len(input_files))
+
+            # `cycle_length` is the number of parallel files that get read.
+            if num_cpu_threads == 0:
+                cycle_length = min(os.cpu_count(), len(input_files))
+            else:
+                cycle_length = num_cpu_threads
+
+            # `sloppy` mode means that the interleaving is not exact. This adds
+            # even more randomness to the training pipeline.
+            d = d.apply(
+                tf.data.experimental.parallel_interleave(
+                    tf.data.TFRecordDataset,
+                    sloppy=is_training,
+                    cycle_length=cycle_length))
+            d = d.shuffle(buffer_size=100)
+        else:
+            d = tf.data.TFRecordDataset(input_files)
+            # Since we evaluate for a fixed number of steps we don't want to encounter
+            # out-of-range exceptions.
+
+        d = d.repeat()
+        d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
+
+        return d
+
 
 if __name__ == "__main__":
 
@@ -547,4 +600,8 @@ if __name__ == "__main__":
     output_file = "./pretraining_data"
     vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
     ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
-    ptdm.main(input_file, output_file)
+    ptdm.create_pretraining_data(input_file, output_file)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False)
+    dataset = dataset.take(10)
+    for i in dataset:
+        print(i)

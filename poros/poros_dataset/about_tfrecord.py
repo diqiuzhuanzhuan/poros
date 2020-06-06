@@ -78,7 +78,8 @@ def parse_example(example_proto, feature_description):
     
     """
     # Parse the input tf.Example proto using the dictionary above.
-    return tf.io.parse_single_example(example_proto, feature_description)
+    example = tf.io.parse_single_example(example_proto, feature_description)
+    return example
 
 
 def serialize_array(array):
