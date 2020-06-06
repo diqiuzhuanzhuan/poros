@@ -30,6 +30,8 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
 
     def __init__(self, config: Unilmv2Config):
         super(InputEmbeddingLayer, self).__init__()
+        if isinstance(config, Unilmv2Config):
+            raise TypeError("config type muse be Unilmv2Config")
         self.embedding_lookup_layer = EmbeddingLookupLayer(
             vocab_size=config.vocab_size,
             embedding_size=config.hidden_size,
@@ -71,6 +73,8 @@ class AutoEncodingModel(tf.keras.Model):
 
     def __init__(self, config: Unilmv2Config):
         super(AutoEncodingModel, self).__init__()
+        if isinstance(config, Unilmv2Config):
+            raise TypeError("config type muse be Unilmv2Config")
         self.transformer_layer = TransformerLayer(
             hidden_size=config.hidden_size,
             num_hidden_layers=config.num_hidden_layers,

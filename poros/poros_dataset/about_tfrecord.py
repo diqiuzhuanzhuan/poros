@@ -79,3 +79,12 @@ def parse_example(example_proto, feature_description):
     """
     # Parse the input tf.Example proto using the dictionary above.
     return tf.io.parse_single_example(example_proto, feature_description)
+
+
+def serialize_array(array):
+    array = tf.io.serialize_tensor(array).numpy()
+    return array
+
+
+def unserialize_array(bytes_feature, out_type=tf.float64):
+    return tf.io.parse_tensor(bytes_feature, out_type=out_type)

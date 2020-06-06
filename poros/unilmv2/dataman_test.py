@@ -7,7 +7,10 @@ email: diqiuzhuanzhuan@gmail.com
 """
 
 import unittest
+import numpy as np
 from .dataman import Sample
+from .dataman import TrainingInstance
+from .dataman import create_mask_matrix
 
 
 class SampleTest(unittest.TestCase):
@@ -26,6 +29,51 @@ class SampleTest(unittest.TestCase):
             self.assertTrue("[MASK]" in M[0])
             self.assertLessEqual(len(M[4]), 2)
             print(M)
+
+
+class DatamanTest(unittest.TestCase):
+
+    def test_create_mask_matrix(self):
+        tokens = ['x1', 'x2', '[Pesudo]', '[MASK]', 'x3', 'x4', 'x5', '[Pesudo]', '[Pesudo]', '[MASK]', '[MASK]', 'x6']
+        output_token_positions = [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
+        segment_ids = [1] * len(output_token_positions)
+        is_random_next = False
+        pseudo_index = [[7, 8], [2]]
+        mask_index = [3, 9, 10]
+        pseudo_masked_lm_positions = [[3, 4], [1]]
+        masked_lm_positions = [2, 5, 6]
+        pseudo_masked_lm_labels = [['x2'], ['x4', 'x5']]
+        masked_lm_labels = ['x2', 'x4', 'x5']
+        instance = TrainingInstance(
+            tokens=tokens,
+            output_tokens_positions=output_token_positions,
+            segment_ids=segment_ids,
+            is_random_next=is_random_next,
+            pseudo_index=pseudo_index,
+            pseudo_masked_lm_positions=pseudo_masked_lm_positions,
+            masked_lm_positions=masked_lm_positions,
+            pseudo_masked_lm_labels=pseudo_masked_lm_labels,
+            masked_lm_labels=masked_lm_labels,
+            mask_index=mask_index
+        )
+        masked_matrix = create_mask_matrix(instance)
+        expected_matrix = [
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+            [1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+        ]
+        masked_matrix = np.cast[np.int](masked_matrix)
+        print(masked_matrix)
+        self.assertListEqual(masked_matrix.tolist(), expected_matrix)
 
 
 if __name__ == "__main__":
