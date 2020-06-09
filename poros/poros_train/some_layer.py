@@ -54,9 +54,14 @@ def dot_product_attention(q, k, v, scale=True, bias=None, mask=None):
     return tf.matmul(weights, v)
 
 
-def create_initializer(initializer_range=0.02):
+def create_initializer(initializer_range=0.02, name="truncated_normal"):
     """Creates a `truncated_normal_initializer` with the given range."""
-    return tf.keras.initializers.TruncatedNormal(stddev=initializer_range)
+    if name == "truncated_normal":
+        return tf.keras.initializers.TruncatedNormal(stddev=initializer_range)
+    elif name == "random_normal":
+        return tf.keras.initializers.RandomNormal(stddev=initializer_range)
+    else:
+        raise ValueError("no initializer named :{}".format(name))
 
 
 class AttentionLayer(tf.keras.layers.Layer):

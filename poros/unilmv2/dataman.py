@@ -34,7 +34,7 @@ class Sample(object):
         m_length = min(round(mask_ratio * x_length), max_predictions_per_seq)
         m_set = set()
         pseudo_masked_lm_positions = []
-        pesudo_masked_lm_labels = []
+        pseudo_masked_lm_labels = []
 
         while len(m_set) < m_length:
             p = random.randint(0, x_length-1)
@@ -52,7 +52,7 @@ class Sample(object):
 
             if sub_list.__len__():
                 pseudo_masked_lm_positions.append(sub_list)
-                pesudo_masked_lm_labels.append([tokens[i] for i in sub_list])
+                pseudo_masked_lm_labels.append([tokens[i] for i in sub_list])
                 m_set = m_set.union(set(sub_list))
 
         sorted_pseudo_masked_lm_positions = sorted(pseudo_masked_lm_positions)
@@ -84,7 +84,7 @@ class Sample(object):
         masked_lm_labels = [tokens[i] for i in masked_lm_positions]
 
         return (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
-                pseudo_masked_lm_positions, pesudo_masked_lm_labels, pseudo_index, masked_index)
+                pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index)
 
 
 MaskedLmInstance = collections.namedtuple("MaskedLmInstance", ["index", "label"])
