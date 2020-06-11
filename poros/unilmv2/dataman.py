@@ -144,6 +144,30 @@ def create_mask_matrix(instance: TrainingInstance):
     return mask_matrix
 
 
+def create_attention_mask(input_ids, pseudo_masked_index, pseudo_masked_sub_list_len):
+
+    shape = [len(input_ids), len(input_ids)]
+    mask_matrix = np.ones(shape=shape)
+    normal_text_can_be_seen = []
+
+    for block_index in reversed(pseudo_masked_sub_list_len):
+        sub_pseudo_index = pseudo_masked_index[-block_index:]
+        sub_normal_index = [x-block_index for x in sub_pseudo_index]
+        normal_text_can_be_seen.extend(sub_normal_index)
+        normal_text_can_not_be_seen = list(set(range(shape[0])).difference(set(normal_text_can_be_seen)))
+        for _ in sub_normal_index:
+            mask_matrix[normal_text_can_not_be_seen, _] = 0
+
+        pseudo_can_be_seen = sub_pseudo_index
+        normal_text_can_be_seen.extend(sub_pseudo_index)
+        pseudo_can_not_be_seen = list(set(range(shape[0])).difference(set(pseudo_can_be_seen)))
+        for _ in sub_pseudo_index:
+            mask_matrix[pseudo_can_not_be_seen, _] = 0
+        pseudo_masked_index = pseudo_masked_index[: -block_index]
+
+    return mask_matrix
+
+
 class PreTrainingDataMan(object):
 
     def __init__(self, vocab_file, masked_lm_prob=0.15, max_predictions_per_seq=20, do_lower_case=True, max_seq_length=128,
@@ -530,5 +554,6 @@ if __name__ == "__main__":
     ptdm.create_pretraining_data(input_file, output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False)
     dataset = dataset.take(10)
-    for i in dataset:
-        print(i)
+    for data in dataset:
+        for k in data:
+            print(k, data[k])

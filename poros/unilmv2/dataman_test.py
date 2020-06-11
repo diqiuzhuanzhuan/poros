@@ -10,7 +10,7 @@ import unittest
 import numpy as np
 from .dataman import Sample
 from .dataman import TrainingInstance
-from .dataman import create_mask_matrix
+from .dataman import create_mask_matrix, create_attention_mask
 
 
 class SampleTest(unittest.TestCase):
@@ -55,9 +55,11 @@ class DatamanTest(unittest.TestCase):
             masked_lm_positions=masked_lm_positions,
             pseudo_masked_lm_labels=pseudo_masked_lm_labels,
             masked_lm_labels=masked_lm_labels,
-            mask_index=mask_index
+            masked_index=mask_index
         )
-        masked_matrix = create_mask_matrix(instance)
+        #masked_matrix = create_mask_matrix(instance)
+        flatten_index = [x for _ in instance.pseudo_index for x in _]
+        masked_matrix = create_attention_mask(instance.tokens, flatten_index, [len(x) for x in instance.pseudo_index])
         expected_matrix = [
             [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
             [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],

@@ -245,7 +245,7 @@ class TransformerLayer(tf.keras.layers.Layer):
                 with tf.name_scope("intermediate/dense"):
                     layer = tf.keras.layers.Dense(
                         self.intermediate_size,
-                        activation=self.intermediate_act_fn,
+                        activation=acitvation_function.get_activation(self.intermediate_act_fn),
                         kernel_initializer=create_initializer(self.initializer_range))
                     layer.build(input_shape=[None, self.hidden_size])
                     self.intermediate_outputs.append(layer)
