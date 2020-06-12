@@ -97,12 +97,12 @@ class Unilmv2Layer(tf.keras.layers.Layer):
         output_tokens_positions = inputs["output_tokens_positions"]
         pseudo_masked_sub_list_len = inputs["pseudo_masked_sub_list_len"]
 
-        embedding_output = self.input_embedding_layer({
+        self.embedding_output, self.embedding_table = self.input_embedding_layer({
             "input_ids": input_ids,
             "position_ids": output_tokens_positions
         })
         attention_mask = self.create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len)
-        self.all_encoder_layers = self.transformer_layer(inputs=embedding_output, attention_mask=attention_mask)
+        self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = self.pooler_layer(first_token_tensor)
@@ -131,6 +131,9 @@ class Unilmv2Layer(tf.keras.layers.Layer):
         """
         return self.embedding_output
 
+    def get_embedding_table(self):
+        return self.embedding_table
+
 
 class InputEmbeddingLayer(tf.keras.layers.Layer):
 
@@ -156,7 +159,7 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
         input_ids = inputs["input_ids"]
         position_ids = inputs["position_ids"]
-        word_embeddings, _= self.embedding_lookup_layer(
+        word_embeddings, embedding_table = self.embedding_lookup_layer(
             inputs=input_ids
         )
         position_embeddings, _ = self.position_embedding_layer(
@@ -165,7 +168,7 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
         input_embeddings = word_embeddings + position_embeddings
         input_embeddings = self.normalization_layer(inputs=input_embeddings)
 
-        return input_embeddings
+        return input_embeddings, embedding_table
 
 
 def gather_indexes(sequence_tensor, positions):
@@ -191,7 +194,7 @@ class MaskLmLayer(tf.keras.layers.Layer):
             raise TypeError("config type muse be Unilmv2Config")
         super(MaskLmLayer, self).__init__()
         self.config = config
-        with tf.name_scope("cls/predictions"):
+        with tf.name_scope("cls/predictions/mask_lm"):
             # We apply one more non-linear transformation before the output layer.
             # This matrix is not used after pre-training.
             with tf.name_scope("transform"):
@@ -245,7 +248,7 @@ class PseudoMaskLmLayer(tf.keras.layers.Layer):
             raise TypeError("config type muse be Unilmv2Config")
         super(PseudoMaskLmLayer, self).__init__()
         self.config = config
-        with tf.name_scope("cls/predictions"):
+        with tf.name_scope("cls/predictions/pseudo_lm"):
             # We apply one more non-linear transformation before the output layer.
             # This matrix is not used after pre-training.
             with tf.name_scope("transform"):

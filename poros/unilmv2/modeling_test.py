@@ -7,7 +7,11 @@ email: diqiuzhuanzhuan@gmail.com
 """
 import unittest
 from poros.unilmv2 import InputEmbeddingLayer
-from poros.unilmv2 import Unilmv2Layer
+from poros.unilmv2 import (
+    Unilmv2Layer,
+    MaskLmLayer,
+    PseudoMaskLmLayer
+)
 from poros.unilmv2 import Unilmv2Config
 import tensorflow as tf
 import os
@@ -113,6 +117,66 @@ class ModelingTest(unittest.TestCase):
         batch_size = features["input_ids"].get_shape().as_list()[0]
         output = unilmv2_layer(features)
         self.assertListEqual(output.get_shape().as_list(), [batch_size, self.config.hidden_size])
+
+    def test_mask_lm_layer(self):
+        mask_lm_layer = MaskLmLayer(config=self.config)
+        batch_size, from_seq_length, hidden_size = 2, 128, self.config.hidden_size
+        input_tensor = tf.initializers.TruncatedNormal(stddev=0.02)(shape=[batch_size, from_seq_length, hidden_size])
+        output_weights = tf.initializers.TruncatedNormal(stddev=0.02)(shape=[self.config.vocab_size, hidden_size])
+        positions = tf.constant(
+            value=[
+                [9, 127, 13, 0, 0, 0],
+                [8, 49, 88, 0, 0, 0]
+            ]
+        )
+        label_ids = tf.constant(
+            value=[
+                [1, 5, 9, 0, 0, 0],
+                [3, 7, 12, 0, 0, 0]
+            ]
+        )
+        label_weight = tf.constant(
+            value=[
+                [1, 1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0, 0]
+            ],
+            dtype=tf.float32
+        )
+        loss, per_sample_loss, log_prob = mask_lm_layer(input_tensor, output_weights, positions, label_ids, label_weight)
+        print("loss is {}".format(loss))
+        print("per sample loss is {}".format(per_sample_loss))
+        print("log_prob is {}".format(log_prob))
+        self.assertListEqual(log_prob.get_shape().as_list(), [batch_size * positions.get_shape().as_list()[1], self.config.vocab_size])
+
+    def test_pseudo_mask_lm_layer(self):
+        pseudo_mask_lm_layer = PseudoMaskLmLayer(config=self.config)
+        batch_size , from_seq_length, hidden_size = 2, 128, self.config.hidden_size
+        input_tensor = tf.initializers.TruncatedNormal(stddev=0.02)(shape=[batch_size, from_seq_length, hidden_size])
+        output_weights = tf.initializers.TruncatedNormal(stddev=0.02)(shape=[self.config.vocab_size, hidden_size])
+        positions = tf.constant(
+            value=[
+                [9, 127, 13, 0, 0, 0],
+                [8, 49, 88, 0, 0, 0]
+            ]
+        )
+        label_ids = tf.constant(
+            value=[
+                [1, 5, 9, 0, 0, 0],
+                [3, 7, 12, 0, 0, 0]
+            ]
+        )
+        label_weight = tf.constant(
+            value=[
+                [1, 1, 1, 0, 0, 0],
+                [1, 1, 1, 0, 0, 0]
+            ],
+            dtype=tf.float32
+        )
+        loss, per_sample_loss, log_prob = pseudo_mask_lm_layer(input_tensor, output_weights, positions, label_ids, label_weight)
+        print("loss is {}".format(loss))
+        print("per sample loss is {}".format(per_sample_loss))
+        print("log_prob is {}".format(log_prob))
+        self.assertListEqual(log_prob.get_shape().as_list(), [batch_size * positions.get_shape().as_list()[1], self.config.vocab_size])
 
 
 if __name__ == "__main__":
