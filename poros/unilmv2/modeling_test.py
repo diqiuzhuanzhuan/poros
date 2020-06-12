@@ -6,9 +6,9 @@ email: diqiuzhuanzhuan@gmail.com
 
 """
 import unittest
-from poros.unilmv2.modeling import InputEmbeddingLayer
-from poros.unilmv2.modeling import Unilmv2Layer
-from poros.unilmv2.config import Unilmv2Config
+from poros.unilmv2 import InputEmbeddingLayer
+from poros.unilmv2 import Unilmv2Layer
+from poros.unilmv2 import Unilmv2Config
 import tensorflow as tf
 import os
 
@@ -70,6 +70,7 @@ class ModelingTest(unittest.TestCase):
                 [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
             ]
         )
+        input_mask = tf.ones(shape=input_ids.get_shape())
 
         pseudo_index = tf.constant(
             value=[
@@ -82,8 +83,36 @@ class ModelingTest(unittest.TestCase):
             ]
         )
         unilmv2_layer = Unilmv2Layer(Unilmv2Config(vocab_size=100))
-        mask_matrix = unilmv2_layer.create_attention_mask(input_ids, pseudo_index, pseudo_len)
+        mask_matrix = unilmv2_layer.create_attention_mask(input_ids, input_mask, pseudo_index, pseudo_len)
         self.assertListEqual(expected_matrix.numpy().tolist(), mask_matrix.numpy().tolist())
+
+    def test_unilmv2_layer(self):
+        unilmv2_layer = Unilmv2Layer(self.config)
+        features = dict()
+        features["input_ids"] = tf.constant(
+            value=[
+                [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
+            ]
+        )
+        features["input_mask"] = tf.ones(shape=features["input_ids"].get_shape())
+        features["pseudo_masked_index"] = tf.constant(
+            value=[
+                [7, 8, 2]
+            ]
+        )
+        features["pseudo_masked_sub_list_len"] = tf.constant(
+            value=[
+                [2, 1]
+            ]
+        )
+        features["output_tokens_positions"] = tf.constant(
+            value=[
+                [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
+            ]
+        )
+        batch_size = features["input_ids"].get_shape().as_list()[0]
+        output = unilmv2_layer(features)
+        self.assertListEqual(output.get_shape().as_list(), [batch_size, self.config.hidden_size])
 
 
 if __name__ == "__main__":

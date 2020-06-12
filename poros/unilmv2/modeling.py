@@ -5,8 +5,9 @@ author: diqiuzhuanzhuan
 email: diqiuzhuanzhuan@gmail.com
 
 """
+import numpy as np
 import tensorflow as tf
-from poros.unilmv2.config import Unilmv2Config
+from poros.unilmv2 import Unilmv2Config
 from poros_train.some_layer import (
     PositionEmbeddingLayer,
     EmbeddingLookupLayer,
@@ -55,18 +56,22 @@ class Unilmv2Layer(tf.keras.layers.Layer):
                 self.pooler_layer.build(input_shape=[None, config.hidden_size])
 
     @staticmethod
-    def create_attention_mask(input_ids, _pseudo_masked_index, _pseudo_masked_sub_list_len):
+    def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
         # input_ids_shape = [batch_size, length, width]
         input_ids_shape = about_tensor.get_shape(input_ids, expected_rank=[2, 3])
-        shape = [input_ids_shape[1], input_ids_shape[1]]
+        from_seq_length = input_ids_shape[1]
+        input_shape = about_tensor.get_shape(input_mask, expected_rank=2)
+        batch_size = input_shape[0]
+        to_seq_length = input_shape[1]
+        input_mask = tf.reshape(input_mask, [batch_size, 1, to_seq_length])
+        shape = [from_seq_length, to_seq_length]
 
         output_matrix = []
-        for pseudo_masked_index, pseudo_masked_sub_list_len in zip(_pseudo_masked_index, _pseudo_masked_sub_list_len):
-            import numpy as np
-            mask_matrix = np.ones(shape=shape)
+        for each_pseudo_masked_index, each_pseudo_masked_sub_list_len, each_input_mask in zip(pseudo_masked_index, pseudo_masked_sub_list_len, input_mask):
+            mask_matrix = np.ones(shape=[input_shape[1], 1]) * each_input_mask.numpy()
             normal_text_can_be_seen = []
-            for block_index in reversed(pseudo_masked_sub_list_len):
-                sub_pseudo_index = pseudo_masked_index[-block_index:]
+            for block_index in reversed(each_pseudo_masked_sub_list_len):
+                sub_pseudo_index = each_pseudo_masked_index[-block_index:]
                 sub_normal_index = [x - block_index for x in sub_pseudo_index]
                 normal_text_can_be_seen.extend(sub_normal_index)
                 normal_text_can_be_seen = [_.numpy() if isinstance(_, tf.Tensor) else _ for _ in normal_text_can_be_seen]
@@ -80,13 +85,14 @@ class Unilmv2Layer(tf.keras.layers.Layer):
                 pseudo_can_not_be_seen = list(set(range(shape[0])).difference(set(pseudo_can_be_seen)))
                 for _ in sub_pseudo_index:
                     mask_matrix[pseudo_can_not_be_seen, _] = 0
-                pseudo_masked_index = pseudo_masked_index[: -block_index]
+                each_pseudo_masked_index = each_pseudo_masked_index[: -block_index]
             output_matrix.append(mask_matrix)
 
         return tf.stack(output_matrix)
 
     def call(self, inputs, **kwargs):
         input_ids = inputs["input_ids"]
+        input_mask = inputs["input_mask"]
         pseudo_masked_index = inputs["pseudo_masked_index"]
         output_tokens_positions = inputs["output_tokens_positions"]
         pseudo_masked_sub_list_len = inputs["pseudo_masked_sub_list_len"]
@@ -95,15 +101,12 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "input_ids": input_ids,
             "position_ids": output_tokens_positions
         })
-        attention_mask = self.create_attention_mask(input_ids, pseudo_masked_index, pseudo_masked_sub_list_len)
+        attention_mask = self.create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len)
         self.all_encoder_layers = self.transformer_layer(inputs=embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = self.pooler_layer(first_token_tensor)
         return self.pooled_output
-
-
-        return self.all_encoder_layers
 
     def get_sequence_output(self):
         """Gets final hidden layer of encoder.
@@ -325,7 +328,8 @@ class NextSentenceLayer(tf.keras.layers.Layer):
 
 if __name__ == "__main__":
     ul = Unilmv2Layer(config=Unilmv2Config(vocab_size=100))
-    input_ids = tf.random.uniform(shape=[3, 20, 5], dtype=tf.int32, maxval=100)
+    input_ids = tf.random.uniform(shape=[3, 20], dtype=tf.int32, maxval=100)
+    input_mask = tf.ones(shape=[3, 20])
     pseudo_index = tf.constant(
         value=[[3, 7, 9, 10], [4, 9, 8, 15], [5, 11, 17, 18]]
     )
@@ -335,6 +339,7 @@ if __name__ == "__main__":
 
     mask_matrix = ul.create_attention_mask(
         input_ids,
+        input_mask,
         pseudo_index,
         pseudo_len
     )

@@ -7,7 +7,7 @@ email: diqiuzhuanzhuan@gmail.com
 """
 import unittest
 import os
-from poros.unilmv2 import config
+from poros.unilmv2 import Unilmv2Config
 
 
 class Unilmv2ConfigTest(unittest.TestCase):
@@ -18,7 +18,7 @@ class Unilmv2ConfigTest(unittest.TestCase):
 
     def test_from_json_file(self):
         json_file = os.path.join(self.test_data_path, "bert_config.json")
-        unilmv2_config = config.Unilmv2Config.from_json_file(json_file)
+        unilmv2_config = Unilmv2Config.from_json_file(json_file)
         expected_dict = {
             "attention_probs_dropout_prob": 0.1,
             "directionality": "bidi",

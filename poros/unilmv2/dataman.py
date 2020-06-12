@@ -195,8 +195,9 @@ class PreTrainingDataMan(object):
         total_written = 0
         for (inst_index, instance) in enumerate(instances):
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
-            input_mask = create_mask_matrix(instance)
+            #input_mask = create_mask_matrix(instance)
             segment_ids = list(instance.segment_ids)
+            input_mask = [1] * len(instance.tokens)
 
             origin_input_ids_length = len(input_ids) - 2 * len(instance.masked_lm_positions)
             output_tokens_positions = instance.output_tokens_positions
@@ -206,8 +207,8 @@ class PreTrainingDataMan(object):
             #while origin_input_ids_length < max_seq_length:
             while len(input_ids) < (self.max_seq_length + 2*self.max_predictions_per_seq):
                 input_ids.append(0)
+                input_mask.append(0)
                 output_tokens_positions.append(0)
-                input_mask = np.pad(input_mask, [(0, 1), (0, 1)])
                 segment_ids.append(0)
             origin_input_ids_length = len(input_ids) - 2 * self.max_predictions_per_seq
 
@@ -240,6 +241,7 @@ class PreTrainingDataMan(object):
             features = collections.OrderedDict()
             features["input_ids"] = about_tfrecord.create_int_feature(input_ids)
             # convert array to a byte_feature
+            features["input_mask"] = about_tfrecord.create_int_feature(input_mask)
 
             flatten_pseudo_masked_lm_positions = [_ for sub_list in pseudo_masked_lm_positions for _ in sub_list]
             #features["pseudo_masked_lm_positions"] = about_tfrecord.create_int_feature(flatten_pseudo_masked_lm_positions)
@@ -504,6 +506,7 @@ class PreTrainingDataMan(object):
         name_to_features = {
             "input_ids": tf.io.FixedLenFeature([self.max_seq_length+self.max_predictions_per_seq*2], tf.int64),
             #"pseudo_masked_lm_positions": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
+            "input_mask": tf.io.FixedLenFeature([self.max_seq_length+self.max_predictions_per_seq*2], tf.int64),
             "pseudo_masked_index": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
             "masked_index": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
             "pseudo_masked_sub_list_len": tf.io.FixedLenFeature([self.max_predictions_per_seq], tf.int64),
@@ -546,7 +549,6 @@ class PreTrainingDataMan(object):
 
 
 if __name__ == "__main__":
-
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
