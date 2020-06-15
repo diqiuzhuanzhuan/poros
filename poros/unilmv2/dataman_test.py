@@ -35,8 +35,9 @@ class SampleTest(unittest.TestCase):
 class DatamanTest(unittest.TestCase):
 
     def test_create_mask_matrix(self):
-        tokens = ['x1', 'x2', '[Pesudo]', '[MASK]', 'x3', 'x4', 'x5', '[Pesudo]', '[Pesudo]', '[MASK]', '[MASK]', 'x6']
-        output_token_positions = [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
+        tokens = ['x1', 'x2', '[Pesudo]', '[MASK]', 'x3', 'x4', 'x5', '[Pesudo]', '[Pesudo]', '[MASK]', '[MASK]', 'x6', '[PAD]', '[PAD]', '[PAD]']
+        output_token_positions = [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5, 0, 0, 0]
+        input_mask = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0]
         segment_ids = [1] * len(output_token_positions)
         is_random_next = False
         pseudo_index = [[7, 8], [2]]
@@ -59,20 +60,23 @@ class DatamanTest(unittest.TestCase):
         )
         #masked_matrix = create_mask_matrix(instance)
         flatten_index = [x for _ in instance.pseudo_index for x in _]
-        masked_matrix = create_attention_mask(instance.tokens, flatten_index, [len(x) for x in instance.pseudo_index])
+        masked_matrix = create_attention_mask(instance.tokens, input_mask, flatten_index, [len(x) for x in instance.pseudo_index])
         expected_matrix = [
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-            [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
-            [1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
-            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
         masked_matrix = np.cast[np.int](masked_matrix)
         print(masked_matrix)

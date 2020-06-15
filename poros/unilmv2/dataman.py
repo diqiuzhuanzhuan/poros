@@ -12,6 +12,7 @@ import tensorflow as tf
 import numpy as np
 import os
 from poros.poros_dataset import about_tfrecord
+from poros_dataset import about_tensor
 
 
 class Sample(object):
@@ -144,13 +145,15 @@ def create_mask_matrix(instance: TrainingInstance):
     return mask_matrix
 
 
-def create_attention_mask(input_ids, pseudo_masked_index, pseudo_masked_sub_list_len):
+def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
 
     shape = [len(input_ids), len(input_ids)]
-    mask_matrix = np.ones(shape=shape)
+    mask_matrix = np.ones(shape=[shape[0], 1]) * input_mask
+    non_zero = np.count_nonzero(input_mask)
+    mask_matrix[non_zero:, :] = 0
     normal_text_can_be_seen = []
 
-    for block_index in reversed(pseudo_masked_sub_list_len):
+    for block_index in pseudo_masked_sub_list_len[::-1]:
         sub_pseudo_index = pseudo_masked_index[-block_index:]
         sub_normal_index = [x-block_index for x in sub_pseudo_index]
         normal_text_can_be_seen.extend(sub_normal_index)
@@ -166,6 +169,20 @@ def create_attention_mask(input_ids, pseudo_masked_index, pseudo_masked_sub_list
         pseudo_masked_index = pseudo_masked_index[: -block_index]
 
     return mask_matrix
+
+
+def add_attention_mask(features):
+    input_ids = features["input_ids"]
+    input_mask = features["input_mask"]
+    pseudo_masked_index = features["pseudo_masked_index"]
+    pseudo_masked_sub_list_len = features["pseudo_masked_sub_list_len"]
+    mask_matrix = tf.numpy_function(create_attention_mask, [input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len], tf.float64)
+    from poros_dataset import about_tensor
+    input_ids_shape = about_tensor.get_shape(input_ids, expected_rank=1)
+    mask_matrix.set_shape(shape=[input_ids_shape[0], input_ids_shape[0]])
+    features["attention_mask"] = mask_matrix
+
+    return features
 
 
 class PreTrainingDataMan(object):
@@ -542,8 +559,8 @@ class PreTrainingDataMan(object):
             # Since we evaluate for a fixed number of steps we don't want to encounter
             # out-of-range exceptions.
 
-        d = d.repeat()
         d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
+        d = d.map(lambda x: add_attention_mask(x)).batch(batch_size=batch_size, drop_remainder=True).repeat()
 
         return d
 
@@ -555,7 +572,9 @@ if __name__ == "__main__":
     ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
     ptdm.create_pretraining_data(input_file, output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False)
-    dataset = dataset.take(10)
+    dataset = dataset.take(2)
     for data in dataset:
+        print(data.shape)
         for k in data:
-            print(k, data[k])
+            if k == "masked_index":
+                print(k, data[k])

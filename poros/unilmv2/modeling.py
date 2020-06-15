@@ -55,53 +55,18 @@ class Unilmv2Layer(tf.keras.layers.Layer):
                         self.config.initializer_range))
                 self.pooler_layer.build(input_shape=[None, config.hidden_size])
 
-    @staticmethod
-    def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
-        # input_ids_shape = [batch_size, length, width]
-        input_ids_shape = about_tensor.get_shape(input_ids, expected_rank=[2, 3])
-        from_seq_length = input_ids_shape[1]
-        input_shape = about_tensor.get_shape(input_mask, expected_rank=2)
-        batch_size = input_shape[0]
-        to_seq_length = input_shape[1]
-        input_mask = tf.reshape(input_mask, [batch_size, 1, to_seq_length])
-        shape = [from_seq_length, to_seq_length]
-
-        output_matrix = []
-        for each_pseudo_masked_index, each_pseudo_masked_sub_list_len, each_input_mask in zip(pseudo_masked_index, pseudo_masked_sub_list_len, input_mask):
-            mask_matrix = np.ones(shape=[input_shape[1], 1]) * each_input_mask.numpy()
-            normal_text_can_be_seen = []
-            for block_index in reversed(each_pseudo_masked_sub_list_len):
-                sub_pseudo_index = each_pseudo_masked_index[-block_index:]
-                sub_normal_index = [x - block_index for x in sub_pseudo_index]
-                normal_text_can_be_seen.extend(sub_normal_index)
-                normal_text_can_be_seen = [_.numpy() if isinstance(_, tf.Tensor) else _ for _ in normal_text_can_be_seen]
-                normal_text_can_not_be_seen = list(set(range(shape[0])).difference(set(normal_text_can_be_seen)))
-                for _ in sub_normal_index:
-                    mask_matrix[normal_text_can_not_be_seen, _] = 0
-
-                pseudo_can_be_seen = sub_pseudo_index
-                pseudo_can_be_seen = [_.numpy() for _ in pseudo_can_be_seen]
-                normal_text_can_be_seen.extend(sub_pseudo_index)
-                pseudo_can_not_be_seen = list(set(range(shape[0])).difference(set(pseudo_can_be_seen)))
-                for _ in sub_pseudo_index:
-                    mask_matrix[pseudo_can_not_be_seen, _] = 0
-                each_pseudo_masked_index = each_pseudo_masked_index[: -block_index]
-            output_matrix.append(mask_matrix)
-
-        return tf.stack(output_matrix)
-
     def call(self, inputs, **kwargs):
         input_ids = inputs["input_ids"]
-        input_mask = inputs["input_mask"]
-        pseudo_masked_index = inputs["pseudo_masked_index"]
+        if "attention_mask" in inputs:
+            attention_mask = inputs["attention_mask"]
+        else:
+            attention_mask = None
         output_tokens_positions = inputs["output_tokens_positions"]
-        pseudo_masked_sub_list_len = inputs["pseudo_masked_sub_list_len"]
 
         self.embedding_output, self.embedding_table = self.input_embedding_layer({
             "input_ids": input_ids,
             "position_ids": output_tokens_positions
         })
-        attention_mask = self.create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len)
         self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
@@ -174,12 +139,13 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
 def gather_indexes(sequence_tensor, positions):
     """Gathers the vectors at the specific positions over a minibatch."""
     sequence_shape = about_tensor.get_shape(sequence_tensor, expected_rank=3)
+    positions_shape = about_tensor.get_shape(positions, expected_rank=2)
     batch_size = sequence_shape[0]
     seq_length = sequence_shape[1]
     width = sequence_shape[2]
-
     flat_offsets = tf.reshape(
-        tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
+        tf.range(0, batch_size, dtype=tf.int32) * positions_shape[1], [-1, 1])
+    flat_offsets = tf.cast(flat_offsets, dtype=tf.int64)
     flat_positions = tf.reshape(positions + flat_offsets, [-1])
     flat_sequence_tensor = tf.reshape(sequence_tensor,
                                       [batch_size * seq_length, width])
