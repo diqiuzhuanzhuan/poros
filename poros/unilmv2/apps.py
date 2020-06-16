@@ -23,7 +23,7 @@ def pretrain():
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     ptdm.create_pretraining_data(input_file, output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
@@ -44,7 +44,7 @@ class Unilmv2Model(tf.keras.Model):
         self.masked_lm_accuracy_metric = tf.keras.metrics.Accuracy(name="masked_lm_accuracy")
         self.pseudo_masked_lm_accuracy_metric = tf.keras.metrics.Accuracy(name="pseudo_masked_lm_accuracy")
         self.masked_lm_loss = tf.keras.metrics.Mean(name="masked_lm_loss")
-        self.pseudo_masked_lm_loss = tf.keras.metrics.Mean(name="pseudo_masked_lm_loss")
+        self.pseudo_masked_lm_loss = tf.keras.metrictf.data.Dataset.interleaves.Mean(name="pseudo_masked_lm_loss")
 
     def call(self, inputs):
         self.unilmv2_layer(inputs)
@@ -62,7 +62,7 @@ class Unilmv2Model(tf.keras.Model):
             pseudo_lm_input,
             self.unilmv2_layer.get_embedding_table(),
             inputs["pseudo_masked_index"],
-            inputs["masked_lm_ids"],
+            inputs["pseudo_masked_lm_ids"],
             inputs["masked_lm_weights"]
         )
         total_loss = masked_lm_loss + pseudo_masked_lm_loss

@@ -25,11 +25,11 @@ class SampleTest(unittest.TestCase):
             M = self.sample.block_wise_masking(x, max_predictions_per_seq=0, mask_ratio=0.15)
             self.assertFalse("[MASK]" in M[0])
             self.assertLessEqual(len(M[4]), 0)
-            print(M[0:10])
             M = self.sample.block_wise_masking(x, max_predictions_per_seq=2, mask_ratio=0.15)
             self.assertTrue("[MASK]" in M[0])
             self.assertLessEqual(len(M[4]), 2)
-            print(M[0:10])
+            print(M[4])
+            print(M[6])
 
 
 class DatamanTest(unittest.TestCase):

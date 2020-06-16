@@ -59,7 +59,6 @@ class Sample(object):
         sorted_pseudo_masked_lm_positions = sorted(pseudo_masked_lm_positions)
         output_tokens = []
         output_tokens_positions = []
-        pseudo_index = []
         masked_index = []
         for pos, ele in enumerate(tokens):
             if len(sorted_pseudo_masked_lm_positions):
@@ -69,20 +68,27 @@ class Sample(object):
             output_tokens.append(ele)
             output_tokens_positions.append(pos)
             if pos in pseudo_masked_positions and (pos + 1) not in pseudo_masked_positions:
-                sub_pseudo_index = []
                 for pseudo_position in pseudo_masked_positions:
                     output_tokens.append("[Pseudo]")
-                    sub_pseudo_index.append(len(output_tokens) -1 )
                     output_tokens_positions.append(pseudo_position)
                 for masked_position in pseudo_masked_positions:
                     output_tokens.append("[MASK]")
                     masked_index.append(len(output_tokens)-1)
                     output_tokens_positions.append(masked_position)
                 sorted_pseudo_masked_lm_positions.pop(0)
-                pseudo_index.append(sub_pseudo_index)
 
         masked_lm_positions = sorted(list(m_set))
         masked_lm_labels = [tokens[i] for i in masked_lm_positions]
+
+        pseudo_index = []
+        for ele in pseudo_masked_lm_positions:
+            offset = masked_lm_positions.index(ele[0])
+            offset = 2 * offset + 1
+            sub_pseudo_index = []
+            for i in ele:
+                sub_pseudo_index.append(i+offset)
+            pseudo_index.append(sub_pseudo_index)
+
 
         return (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
                 pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index)
@@ -452,7 +458,6 @@ class PreTrainingDataMan(object):
                         if token == "[EOS]":
                             segment_id = 1
 
-
                     instance = TrainingInstance(
                         tokens=tokens,
                         segment_ids=segment_ids,
@@ -536,8 +541,10 @@ class PreTrainingDataMan(object):
             "next_sentence_labels": tf.io.FixedLenFeature([], tf.int64)
         }
 
+        if not isinstance(input_files, list):
+            input_files = [input_files]
         if is_training:
-            d = tf.data.Dataset.from_tensor_slices(tf.constant(input_files))
+            d = tf.data.Dataset.from_tensor_slices(input_files)
             d = d.shuffle(buffer_size=len(input_files))
 
             # `cycle_length` is the number of parallel files that get read.
@@ -548,19 +555,20 @@ class PreTrainingDataMan(object):
 
             # `sloppy` mode means that the interleaving is not exact. This adds
             # even more randomness to the training pipeline.
-            d = d.apply(
-                tf.data.experimental.parallel_interleave(
-                    tf.data.TFRecordDataset,
-                    sloppy=is_training,
-                    cycle_length=cycle_length))
+            tf.data.Dataset.interleave(map_func=tf.data.TFRecordDataset)
+            d = d.apply(tf.data.experimental.parallel_interleave(map_func=tf.data.TFRecordDataset,
+                                                                 cycle_length=cycle_length,
+                                                                 sloppy=is_training
+                                                                 ))
             d = d.shuffle(buffer_size=100)
         else:
             d = tf.data.TFRecordDataset(input_files)
-            # Since we evaluate for a fixed number of steps we don't want to encounter
-            # out-of-range exceptions.
 
         d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
-        d = d.map(lambda x: add_attention_mask(x)).batch(batch_size=batch_size, drop_remainder=True).repeat()
+        if is_training:
+            d = d.map(lambda x: add_attention_mask(x)).repeat()
+
+        d = d.batch(batch_size=batch_size, drop_remainder=True)
 
         return d
 
@@ -572,9 +580,9 @@ if __name__ == "__main__":
     ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
     ptdm.create_pretraining_data(input_file, output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False)
-    dataset = dataset.take(2)
+    print(list(dataset))
     for data in dataset:
-        print(data.shape)
+        print(data)
         for k in data:
-            if k == "masked_index":
+            if k == "masked_lm_ids":
                 print(k, data[k])
