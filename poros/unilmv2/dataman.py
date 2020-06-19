@@ -13,6 +13,7 @@ import numpy as np
 import os
 from poros.poros_dataset import about_tfrecord
 from poros_dataset import about_tensor
+import logging
 
 
 class Sample(object):
@@ -88,7 +89,6 @@ class Sample(object):
             for i in ele:
                 sub_pseudo_index.append(i+offset)
             pseudo_index.append(sub_pseudo_index)
-
 
         return (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
                 pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index)
@@ -183,7 +183,6 @@ def add_attention_mask(features):
     pseudo_masked_index = features["pseudo_masked_index"]
     pseudo_masked_sub_list_len = features["pseudo_masked_sub_list_len"]
     mask_matrix = tf.numpy_function(create_attention_mask, [input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len], tf.float64)
-    from poros_dataset import about_tensor
     input_ids_shape = about_tensor.get_shape(input_ids, expected_rank=1)
     mask_matrix.set_shape(shape=[input_ids_shape[0], input_ids_shape[0]])
     features["attention_mask"] = mask_matrix
@@ -217,8 +216,10 @@ class PreTrainingDataMan(object):
 
         total_written = 0
         for (inst_index, instance) in enumerate(instances):
+            if inst_index > 50:
+                break
+
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
-            #input_mask = create_mask_matrix(instance)
             segment_ids = list(instance.segment_ids)
             input_mask = [1] * len(instance.tokens)
 
@@ -495,7 +496,6 @@ class PreTrainingDataMan(object):
                 trunc_tokens.pop()
 
     def create_pretraining_data(self, input_file, output_file):
-        import logging
         tf.get_logger().setLevel(logging.INFO)
 
         tokenizer = tokenization.FullTokenizer(
@@ -555,7 +555,6 @@ class PreTrainingDataMan(object):
 
             # `sloppy` mode means that the interleaving is not exact. This adds
             # even more randomness to the training pipeline.
-            tf.data.Dataset.interleave(map_func=tf.data.TFRecordDataset)
             d = d.apply(tf.data.experimental.parallel_interleave(map_func=tf.data.TFRecordDataset,
                                                                  cycle_length=cycle_length,
                                                                  sloppy=is_training
@@ -579,8 +578,7 @@ if __name__ == "__main__":
     vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
     ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
     ptdm.create_pretraining_data(input_file, output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False)
-    print(list(dataset))
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)
     for data in dataset:
         print(data)
         for k in data:

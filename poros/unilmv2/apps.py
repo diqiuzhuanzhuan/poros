@@ -19,16 +19,16 @@ from poros.unilmv2 import (
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=12, max_predictions_per_seq=1, random_seed=19988)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     ptdm.create_pretraining_data(input_file, output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
-    unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
-    unilmv2_model.fit(dataset, epochs=5, steps_per_epoch=100)
+    unilmv2_model.compile(optimizer=tf.keras.optimizers.Adamax(learning_rate=0.0001))
+    unilmv2_model.fit(dataset, epochs=100, steps_per_epoch=55)
 
 
 class Unilmv2Model(tf.keras.Model):
@@ -44,7 +44,7 @@ class Unilmv2Model(tf.keras.Model):
         self.masked_lm_accuracy_metric = tf.keras.metrics.Accuracy(name="masked_lm_accuracy")
         self.pseudo_masked_lm_accuracy_metric = tf.keras.metrics.Accuracy(name="pseudo_masked_lm_accuracy")
         self.masked_lm_loss = tf.keras.metrics.Mean(name="masked_lm_loss")
-        self.pseudo_masked_lm_loss = tf.keras.metrictf.data.Dataset.interleaves.Mean(name="pseudo_masked_lm_loss")
+        self.pseudo_masked_lm_loss = tf.keras.metrics.Mean(name="pseudo_masked_lm_loss")
 
     def call(self, inputs):
         self.unilmv2_layer(inputs)
@@ -65,19 +65,23 @@ class Unilmv2Model(tf.keras.Model):
             inputs["pseudo_masked_lm_ids"],
             inputs["masked_lm_weights"]
         )
-        total_loss = masked_lm_loss + pseudo_masked_lm_loss
+        #total_loss = masked_lm_loss + pseudo_masked_lm_loss
+        total_loss = masked_lm_loss
         self.add_loss(total_loss)
 
         masked_lm_predictions = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)
 
         masked_lm_predictions = tf.reshape(masked_lm_predictions, shape=about_tensor.get_shape(inputs["masked_lm_ids"]))
+        tf.print(masked_lm_predictions)
+        tf.print(inputs["masked_lm_ids"])
+        tf.print(masked_lm_log_probs)
         masked_lm_accuracy_metric = self.masked_lm_accuracy_metric(y_pred=masked_lm_predictions,
                                                                    y_true=inputs["masked_lm_ids"],
                                                                    sample_weight=inputs["masked_lm_weights"])
         pseudo_masked_lm_predictions = tf.argmax(pseudo_masked_lm_log_probs, axis=-1, output_type=tf.int32)
-        pseudo_masked_lm_predictions = tf.reshape(pseudo_masked_lm_predictions, shape=about_tensor.get_shape(inputs["masked_lm_ids"]))
+        pseudo_masked_lm_predictions = tf.reshape(pseudo_masked_lm_predictions, shape=about_tensor.get_shape(inputs["pseudo_masked_lm_ids"]))
         pseudo_masked_lm_accuracy_metric = self.pseudo_masked_lm_accuracy_metric(y_pred=pseudo_masked_lm_predictions,
-                                                                   y_true=inputs["masked_lm_ids"],
+                                                                   y_true=inputs["pseudo_masked_lm_ids"],
                                                                    sample_weight=inputs["masked_lm_weights"])
 
         masked_lm_loss_metric = self.masked_lm_loss(masked_lm_loss)

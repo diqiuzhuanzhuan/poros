@@ -20,10 +20,10 @@ class Unilmv2ConfigTest(unittest.TestCase):
         json_file = os.path.join(self.test_data_path, "bert_config.json")
         unilmv2_config = Unilmv2Config.from_json_file(json_file)
         expected_dict = {
-            "attention_probs_dropout_prob": 0.1,
+            "attention_probs_dropout_prob": 0.9,
             "directionality": "bidi",
             "hidden_act": "gelu",
-            "hidden_dropout_prob": 0.1,
+            "hidden_dropout_prob": 0.9,
             "hidden_size": 768,
             "initializer_range": 0.02,
             "intermediate_size": 3072,
@@ -36,7 +36,7 @@ class Unilmv2ConfigTest(unittest.TestCase):
             "pooler_size_per_head": 128,
             "pooler_type": "first_token_transform",
             "type_vocab_size": 2,
-            "vocab_size": 21128
+            "vocab_size": 21132
         }
 
         self.assertDictEqual(unilmv2_config.to_dict(), expected_dict)

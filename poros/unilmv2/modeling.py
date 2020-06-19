@@ -5,7 +5,6 @@ author: diqiuzhuanzhuan
 email: diqiuzhuanzhuan@gmail.com
 
 """
-import numpy as np
 import tensorflow as tf
 from poros.unilmv2 import Unilmv2Config
 from poros_train.some_layer import (
@@ -154,7 +153,6 @@ def gather_indexes(sequence_tensor, positions):
 
 
 class MaskLmLayer(tf.keras.layers.Layer):
-
     def __init__(self, config: Unilmv2Config):
         if not isinstance(config, Unilmv2Config):
             raise TypeError("config type muse be Unilmv2Config")
