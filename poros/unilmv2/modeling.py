@@ -66,7 +66,7 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "input_ids": input_ids,
             "position_ids": output_tokens_positions
         })
-        self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
+        self.all_encoder_layers = self.transformer_layer(input_tensor=self.embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = self.pooler_layer(first_token_tensor)
@@ -124,10 +124,10 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
         input_ids = inputs["input_ids"]
         position_ids = inputs["position_ids"]
         word_embeddings, embedding_table = self.embedding_lookup_layer(
-            inputs=input_ids
+            input_ids
         )
         position_embeddings, _ = self.position_embedding_layer(
-            inputs=position_ids
+            position_ids
         )
         input_embeddings = word_embeddings + position_embeddings
         input_embeddings = self.normalization_layer(inputs=input_embeddings)

@@ -8,9 +8,11 @@ email: diqiuzhuanzhuan@gmail.com
 
 import unittest
 import numpy as np
+import os
 from .dataman import Sample
 from .dataman import TrainingInstance
-from .dataman import create_mask_matrix, create_attention_mask
+from .dataman import create_attention_mask
+from .dataman import PreTrainingDataMan
 
 
 class SampleTest(unittest.TestCase):
@@ -81,6 +83,14 @@ class DatamanTest(unittest.TestCase):
         masked_matrix = np.cast[np.int](masked_matrix)
         print(masked_matrix)
         self.assertListEqual(masked_matrix.tolist(), expected_matrix)
+
+    def test_create_pretrain_data(self):
+        vocab_file = os.path.join("test_data", "vocab.txt")
+        input_file = "../bert/sample_text.txt"
+        output_file = "./pretraining_data"
+        ptdm = PreTrainingDataMan(vocab_file=vocab_file)
+        ptdm.create_pretraining_data(input_file, output_file)
+        dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)
 
 
 if __name__ == "__main__":

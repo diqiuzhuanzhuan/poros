@@ -216,7 +216,7 @@ class PreTrainingDataMan(object):
 
         total_written = 0
         for (inst_index, instance) in enumerate(instances):
-            if inst_index > 50:
+            if inst_index > 5:
                 break
 
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
