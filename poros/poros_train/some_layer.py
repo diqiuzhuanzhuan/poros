@@ -271,9 +271,10 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
         """
 
-    def call(self, input_tensor, attention_mask):
+    def call(self, inputs, attention_mask):
         #input_tensor = features["input_tensor"]
         #attention_mask = features["attention_mask"]
+        input_tensor = inputs
         input_shape = about_tensor.get_shape(input_tensor, expected_rank=3)
         batch_size = input_shape[0]
         seq_length = input_shape[1]

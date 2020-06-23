@@ -85,9 +85,9 @@ class DatamanTest(unittest.TestCase):
         self.assertListEqual(masked_matrix.tolist(), expected_matrix)
 
     def test_create_pretrain_data(self):
-        vocab_file = os.path.join("test_data", "vocab.txt")
-        input_file = "../bert/sample_text.txt"
-        output_file = "./pretraining_data"
+        vocab_file = os.path.join(os.path.dirname(__file__), "test_data", "vocab.txt")
+        input_file = os.path.join(os.path.dirname(__file__), "../bert/sample_text.txt")
+        output_file = os.path.join(os.path.dirname(__file__), "pretraining_data")
         ptdm = PreTrainingDataMan(vocab_file=vocab_file)
         ptdm.create_pretraining_data(input_file, output_file)
         dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)

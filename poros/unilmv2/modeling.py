@@ -66,7 +66,7 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "input_ids": input_ids,
             "position_ids": output_tokens_positions
         })
-        self.all_encoder_layers = self.transformer_layer(input_tensor=self.embedding_output, attention_mask=attention_mask)
+        self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
         self.pooled_output = self.pooler_layer(first_token_tensor)
@@ -144,7 +144,7 @@ def gather_indexes(sequence_tensor, positions):
     width = sequence_shape[2]
     flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * positions_shape[1], [-1, 1])
-    flat_offsets = tf.cast(flat_offsets, dtype=tf.int64)
+    lat_offsets = tf.cast(flat_offsets, dtype=tf.int64)
     flat_positions = tf.reshape(positions + flat_offsets, [-1])
     flat_sequence_tensor = tf.reshape(sequence_tensor,
                                       [batch_size * seq_length, width])
