@@ -9,6 +9,7 @@ import tensorflow as tf
 from poros.unilmv2 import Unilmv2Config
 from poros_train.some_layer import (
     PositionEmbeddingLayer,
+    TokenTypeEmbeddingLayer,
     EmbeddingLookupLayer,
     TransformerLayer,
     create_initializer
@@ -61,10 +62,12 @@ class Unilmv2Layer(tf.keras.layers.Layer):
         else:
             attention_mask = None
         output_tokens_positions = inputs["output_tokens_positions"]
+        segment_ids = inputs["segment_ids"]
 
         self.embedding_output, self.embedding_table = self.input_embedding_layer({
             "input_ids": input_ids,
-            "position_ids": output_tokens_positions
+            "position_ids": output_tokens_positions,
+            "segment_ids": segment_ids
         })
         self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
         self.sequence_output = self.all_encoder_layers[-1]
@@ -110,11 +113,15 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
             vocab_size=config.vocab_size,
             embedding_size=config.hidden_size,
             initializer_range=config.initializer_range)
-
         self.position_embedding_layer = PositionEmbeddingLayer(
             position_size=config.max_position_embeddings,
             embedding_size=config.hidden_size,
             initializer_range=config.initializer_range)
+        self.token_type_embedding_layer = TokenTypeEmbeddingLayer(
+            token_type_size=2,
+            embedding_size=config.hidden_size,
+            initializer_range=config.initializer_range
+        )
 
         with tf.name_scope("LayerNorm"):
             self.normalization_layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
@@ -123,13 +130,17 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
     def call(self, inputs, **kwargs):
         input_ids = inputs["input_ids"]
         position_ids = inputs["position_ids"]
+        segment_ids = inputs["segment_ids"]
         word_embeddings, embedding_table = self.embedding_lookup_layer(
             input_ids
         )
         position_embeddings, _ = self.position_embedding_layer(
             position_ids
         )
-        input_embeddings = word_embeddings + position_embeddings
+        segment_embeddings, _ = self.token_type_embedding_layer(
+            segment_ids
+        )
+        input_embeddings = word_embeddings + position_embeddings + segment_embeddings
         input_embeddings = self.normalization_layer(inputs=input_embeddings)
 
         return input_embeddings, embedding_table
@@ -304,10 +315,3 @@ if __name__ == "__main__":
         value=[[2, 1, 1, 0], [1, 1, 1, 1], [3, 1, 0, 0]]
     )
 
-    mask_matrix = ul.create_attention_mask(
-        input_ids,
-        input_mask,
-        pseudo_index,
-        pseudo_len
-    )
-    print(mask_matrix)

@@ -152,7 +152,6 @@ def create_mask_matrix(instance: TrainingInstance):
 
 
 def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
-
     shape = [len(input_ids), len(input_ids)]
     mask_matrix = np.ones(shape=[shape[0], 1]) * input_mask
     non_zero = np.count_nonzero(input_mask)
@@ -204,7 +203,6 @@ class PreTrainingDataMan(object):
         self.short_seq_prob = short_seq_prob
         self.random_seed = random_seed
 
-
     def write_instance_to_example_files(self, instances, tokenizer, max_seq_length,
                                         max_predictions_per_seq, output_files):
         """Create TF example files from `TrainingInstance`s."""
@@ -216,8 +214,6 @@ class PreTrainingDataMan(object):
 
         total_written = 0
         for (inst_index, instance) in enumerate(instances):
-            if inst_index > 5:
-                break
 
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
             segment_ids = list(instance.segment_ids)
@@ -575,12 +571,9 @@ class PreTrainingDataMan(object):
 if __name__ == "__main__":
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
-    vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
+    vocab_file = "./test_data/vocab.txt"
     ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
     ptdm.create_pretraining_data(input_file, output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=2)
     for data in dataset:
-        print(data)
-        for k in data:
-            if k == "masked_lm_ids":
-                print(k, data[k])
+        print(data["attention_mask"])

@@ -19,7 +19,7 @@ from poros.unilmv2 import (
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=2, random_seed=19988)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20, random_seed=19988)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     ptdm.create_pretraining_data(input_file, output_file)
@@ -28,7 +28,7 @@ def pretrain():
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
     unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
-    unilmv2_model.fit(dataset, epochs=100, steps_per_epoch=15)
+    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15)
 
 
 class Unilmv2Model(tf.keras.Model):

@@ -7,11 +7,11 @@ email: diqiuzhuanzhuan@gmail.com
 """
 
 import unittest
-import modeling
-import run_pretraining
+from poros.bert import modeling
+from poros.bert import run_pretraining
 import tensorflow as tf
-import tokenization
-from bert.run_classifier import SiameseProcessor
+from poros.bert import tokenization
+from poros.bert.run_classifier import SiameseProcessor
 
 
 class TestRunPretraining(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestRunPretraining(unittest.TestCase):
         self.assertEqual(log_probs.shape.as_list(), [batch_size, 2])
 
     def test_bert_pretrain_model(self):
-        bert_config = modeling.BertConfig.from_json_file("../bert_model/data/chinese_L-12_H-768_A-12/bert_config.json")
+        bert_config = modeling.BertConfig.from_json_file("../bert_model/test_data/bert_config.json")
         max_seq_length = 128
         max_predictions_per_seq = 20
         batch_size = 8
@@ -91,7 +91,7 @@ class TestRunPretraining(unittest.TestCase):
         bert_pretrain_model = run_pretraining.BertPretrainModel(
             config=bert_config,
             is_training=True,
-            init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
+            #init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
         )
 
         bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
@@ -120,15 +120,14 @@ class TestRunPretraining(unittest.TestCase):
             tf.data.experimental.map_and_batch(
                 lambda record: run_pretraining._decode_record(record, name_to_features),
                 batch_size=8,
-                drop_remainder=True))
+                drop_remainder=True)).repeat()
 
-        bert_pretrain_model.fit(d, epochs=1, steps_per_epoch=10)
+        bert_pretrain_model.fit(d, epochs=10, steps_per_epoch=10)
         import time
         t1 = time.time()
         output = bert_pretrain_model(features)
         print(time.time()-t1)
         print(output)
-
 
     def test_siamese_bert_model(self):
         bert_config = modeling.BertConfig.from_json_file("../bert_model/data/chinese_L-12_H-768_A-12/bert_config.json")

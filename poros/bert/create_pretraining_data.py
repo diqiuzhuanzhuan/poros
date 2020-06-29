@@ -469,5 +469,5 @@ if __name__ == "__main__":
     flags.mark_flag_as_required("vocab_file")
     FLAGS.input_file = "./sample_text.txt"
     FLAGS.output_file = "./output"
-    FLAGS.vocab_file = "../bert_model/data/chinese_L-12_H-768_A-12/vocab.txt"
+    FLAGS.vocab_file = "../bert_model/test_data/vocab.txt"
     app.run(main=main, argv=None)

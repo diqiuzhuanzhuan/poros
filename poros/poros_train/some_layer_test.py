@@ -44,6 +44,19 @@ class SomeLayerTest(tf.test.TestCase):
         self.assertEqual(get_shape(look_up), [1, 4, 128])
         self.assertEqual(get_shape(embedding_table), [128, 128])
 
+    def test_attention_layer(self):
+        attention_layer = some_layer.AttentionLayer(size_per_head=768)
+        q = tf.random.truncated_normal(shape=[1, 10, 768])
+        k = q
+        v = q
+        import numpy as np
+        numpy_mask = np.zeros(shape=[1, 10, 10])
+        numpy_mask[:, :, 0] = 1
+        attention_mask = tf.constant(value=numpy_mask)
+
+        res = attention_layer(q, k, v, attention_mask=attention_mask)
+        print(res)
+
 
 if __name__ == "__main__":
     tf.test.main()

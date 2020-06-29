@@ -262,14 +262,6 @@ class TransformerLayer(tf.keras.layers.Layer):
                         layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
                         layer.build(input_shape=[None, None, self.hidden_size])
                         self.outputs_layer_norm.append(layer)
-        """
-        self.attention_layers = tf.stack(self.attention_layers)
-        self.attention_outputs = tf.stack(self.attention_outputs)
-        self.attention_outputs_layer_norm = tf.stack(self.attention_outputs_layer_norm)
-        self.intermediate_outputs = tf.stack(self.intermediate_outputs)
-        self.outputs = tf.stack(self.outputs)
-        self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
-        """
 
     def call(self, inputs, attention_mask):
         #input_tensor = features["input_tensor"]
@@ -346,7 +338,6 @@ class TransformerLayer(tf.keras.layers.Layer):
         else:
             final_output = about_tensor.reshape_from_matrix(prev_output, input_shape)
             return final_output
-
 
 
 class EmbeddingLookupLayer(tf.keras.layers.Layer):
