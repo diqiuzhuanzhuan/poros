@@ -157,6 +157,7 @@ def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_mas
     non_zero = np.count_nonzero(input_mask)
     mask_matrix[non_zero:, :] = 0
     normal_text_can_be_seen = []
+    pseudo_masked_sub_list_len = pseudo_masked_sub_list_len[0:np.count_nonzero(pseudo_masked_sub_list_len)]
 
     for block_index in pseudo_masked_sub_list_len[::-1]:
         sub_pseudo_index = pseudo_masked_index[-block_index:]
@@ -176,7 +177,10 @@ def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_mas
     return mask_matrix
 
 
-def add_attention_mask(features):
+def add_attention_mask(features, is_training=False):
+    if not is_training:
+        features["attention_mask"] = None
+        return features
     input_ids = features["input_ids"]
     input_mask = features["input_mask"]
     pseudo_masked_index = features["pseudo_masked_index"]
@@ -555,13 +559,12 @@ class PreTrainingDataMan(object):
                                                                  cycle_length=cycle_length,
                                                                  sloppy=is_training
                                                                  ))
-            d = d.shuffle(buffer_size=100)
+            #d = d.shuffle(buffer_size=100)
         else:
             d = tf.data.TFRecordDataset(input_files)
 
         d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
-        if is_training:
-            d = d.map(lambda x: add_attention_mask(x)).repeat()
+        d = d.map(lambda x: add_attention_mask(x, is_training)).repeat()
 
         d = d.batch(batch_size=batch_size, drop_remainder=True)
 

@@ -15,6 +15,7 @@ from poros.unilmv2 import (
     MaskLmLayer,
     PseudoMaskLmLayer
 )
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 
 
 def pretrain():
@@ -27,8 +28,11 @@ def pretrain():
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
-    unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
-    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15)
+    reduce_lr = ReduceLROnPlateau(monitor='masked_lm_loss', factor=0.8,
+                                  patience=10, min_lr=0)
+
+    unilmv2_model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1))
+    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15, callbacks=[reduce_lr])
 
 
 class Unilmv2Model(tf.keras.Model):

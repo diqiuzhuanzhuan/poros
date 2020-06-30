@@ -42,10 +42,11 @@ class DatamanTest(unittest.TestCase):
         input_mask = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0]
         segment_ids = [1] * len(output_token_positions)
         is_random_next = False
-        pseudo_index = [[7, 8], [2]]
-        mask_index = [3, 9, 10]
+        pseudo_index = [[7, 8], [2], [], []]
+        pseudo_masked_sub_list_len = [2, 1, 0, 0]
+        mask_index = [3, 9, 10, 0, 0]
         pseudo_masked_lm_positions = [[3, 4], [1]]
-        masked_lm_positions = [2, 5, 6]
+        masked_lm_positions = [2, 5, 6, 0, 0]
         pseudo_masked_lm_labels = [['x2'], ['x4', 'x5']]
         masked_lm_labels = ['x2', 'x4', 'x5']
         instance = TrainingInstance(
@@ -62,7 +63,7 @@ class DatamanTest(unittest.TestCase):
         )
         #masked_matrix = create_mask_matrix(instance)
         flatten_index = [x for _ in instance.pseudo_index for x in _]
-        masked_matrix = create_attention_mask(instance.tokens, input_mask, flatten_index, [len(x) for x in instance.pseudo_index])
+        masked_matrix = create_attention_mask(instance.tokens, input_mask, flatten_index, pseudo_masked_sub_list_len)
         expected_matrix = [
             [1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0],
             [1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0],
@@ -88,9 +89,11 @@ class DatamanTest(unittest.TestCase):
         vocab_file = os.path.join(os.path.dirname(__file__), "test_data", "vocab.txt")
         input_file = os.path.join(os.path.dirname(__file__), "../bert/sample_text.txt")
         output_file = os.path.join(os.path.dirname(__file__), "pretraining_data")
-        ptdm = PreTrainingDataMan(vocab_file=vocab_file)
+        ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=20, max_predictions_per_seq=5)
         ptdm.create_pretraining_data(input_file, output_file)
-        dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=2)
+        dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)
+        for data in dataset:
+            print(data["attention_mask"])
 
 
 if __name__ == "__main__":
