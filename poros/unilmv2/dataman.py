@@ -84,7 +84,7 @@ class Sample(object):
         pseudo_index = []
         for ele in pseudo_masked_lm_positions:
             offset = masked_lm_positions.index(ele[0])
-            offset = 2 * offset + 1
+            offset = 2 * offset + len(ele)
             sub_pseudo_index = []
             for i in ele:
                 sub_pseudo_index.append(i+offset)
@@ -218,7 +218,6 @@ class PreTrainingDataMan(object):
 
         total_written = 0
         for (inst_index, instance) in enumerate(instances):
-
             input_ids = tokenizer.convert_tokens_to_ids(instance.tokens)
             segment_ids = list(instance.segment_ids)
             input_mask = [1] * len(instance.tokens)

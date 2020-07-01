@@ -27,11 +27,15 @@ class SampleTest(unittest.TestCase):
             M = self.sample.block_wise_masking(x, max_predictions_per_seq=0, mask_ratio=0.15)
             self.assertFalse("[MASK]" in M[0])
             self.assertLessEqual(len(M[4]), 0)
-            M = self.sample.block_wise_masking(x, max_predictions_per_seq=2, mask_ratio=0.15)
-            self.assertTrue("[MASK]" in M[0])
-            self.assertLessEqual(len(M[4]), 2)
-            print(M[4])
-            print(M[6])
+            (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
+             pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index) = \
+                self.sample.block_wise_masking(x, max_predictions_per_seq=4, mask_ratio=0.30)
+            print(output_tokens)
+            for i in masked_index:
+                self.assertTrue(output_tokens[i] == '[MASK]')
+            for i in pseudo_index:
+                for j in i:
+                    self.assertTrue(output_tokens[j] == '[Pseudo]', "index is {}, tokens is {}".format(j, output_tokens[j]))
 
 
 class DatamanTest(unittest.TestCase):
