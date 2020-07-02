@@ -20,18 +20,19 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20, random_seed=19988)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=1, random_seed=2334)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     ptdm.create_pretraining_data(input_file, output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
+    dataset = dataset.repeat()
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
     reduce_lr = ReduceLROnPlateau(monitor='masked_lm_loss', factor=0.8,
                                   patience=10, min_lr=0)
 
-    unilmv2_model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1))
+    unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=6e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-6))
     unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15, callbacks=[reduce_lr])
 
 

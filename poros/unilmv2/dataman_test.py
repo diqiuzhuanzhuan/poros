@@ -36,6 +36,11 @@ class SampleTest(unittest.TestCase):
             for i in pseudo_index:
                 for j in i:
                     self.assertTrue(output_tokens[j] == '[Pseudo]', "index is {}, tokens is {}".format(j, output_tokens[j]))
+            for i, label in zip(masked_lm_positions, masked_lm_labels):
+                self.assertTrue(x[i] == label)
+            for sublist_index, sublist_labels in zip(pseudo_index, pseudo_masked_lm_labels):
+                for i, j in zip(sublist_index, sublist_labels):
+                    self.assertTrue(output_tokens[i-len(sublist_index)] == j, "output_tokens[i] is {}, j is {}".format(output_tokens[i], j))
 
 
 class DatamanTest(unittest.TestCase):
@@ -93,12 +98,40 @@ class DatamanTest(unittest.TestCase):
         vocab_file = os.path.join(os.path.dirname(__file__), "test_data", "vocab.txt")
         input_file = os.path.join(os.path.dirname(__file__), "../bert/sample_text.txt")
         output_file = os.path.join(os.path.dirname(__file__), "pretraining_data")
-        ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=20, max_predictions_per_seq=5)
+        ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20)
         ptdm.create_pretraining_data(input_file, output_file)
         dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)
+        dataset = dataset.repeat(1)
         for data in dataset:
-            print(data["attention_mask"])
+            input_ids = data["input_ids"].numpy()[0]
+            input_mask = data["input_mask"].numpy()[0]
+            masked_index = data["masked_index"].numpy()[0]
+            masked_lm_ids = data["masked_lm_ids"].numpy()[0]
+            pseudo_masked_index = data["pseudo_masked_index"].numpy()[0]
+            pseudo_masked_lm_ids = data["pseudo_masked_lm_ids"].numpy()[0]
+            attention_mask = data["attention_mask"].numpy()[0]
+            pseudo_masked_sub_list_len = data["pseudo_masked_sub_list_len"].numpy()[0]
+            start_offset = 0
+            pseudo_masked_sub_list_len = pseudo_masked_sub_list_len[0:np.count_nonzero(pseudo_masked_sub_list_len)]
+            pseudo_masked_index = pseudo_masked_index[0:np.sum(pseudo_masked_sub_list_len)]
+            for sublist_len in reversed(pseudo_masked_sub_list_len):
+                reversed_pseudo_masked_index = pseudo_masked_index[::-1]
+                sublist = reversed_pseudo_masked_index[start_offset:start_offset+sublist_len]
+                for i in sublist:
+                    for j in sublist:
+                        self.assertTrue(attention_mask[i][j] == 1, "i: {}, j: {}, value: {}, {}, {}".format(i, j, attention_mask[i, j],
+                                                                                                            pseudo_masked_index, pseudo_masked_sub_list_len))
+                        self.assertTrue(attention_mask[i-sublist_len][j-sublist_len] == 1, "i: {}, j: {}, value: {}, {}, {}".format(i, j, attention_mask[i, j],
+                                                                                                            pseudo_masked_index, pseudo_masked_sub_list_len))
+                start_offset += sublist_len
+            for i, value in enumerate(input_mask):
+                if value == 0:
+                    self.assertTrue(np.sum(attention_mask[i][:]) == 0)
+                    self.assertTrue(np.sum(attention_mask[:][i]) == 0)
+                    continue
 
+
+            print(attention_mask)
 
 if __name__ == "__main__":
     unittest.main()

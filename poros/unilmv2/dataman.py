@@ -156,12 +156,15 @@ def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_mas
     mask_matrix = np.ones(shape=[shape[0], 1]) * input_mask
     non_zero = np.count_nonzero(input_mask)
     mask_matrix[non_zero:, :] = 0
+    mask_matrix[:, non_zero:] = 0
     normal_text_can_be_seen = []
     pseudo_masked_sub_list_len = pseudo_masked_sub_list_len[0:np.count_nonzero(pseudo_masked_sub_list_len)]
-
+    pseudo_masked_index = pseudo_masked_index[0:np.sum(pseudo_masked_sub_list_len)]
     for block_index in pseudo_masked_sub_list_len[::-1]:
         sub_pseudo_index = pseudo_masked_index[-block_index:]
+        # Pseudo index correspond to normal index
         sub_normal_index = [x-block_index for x in sub_pseudo_index]
+        # normal_text can be seen by sub normal index
         normal_text_can_be_seen.extend(sub_normal_index)
         normal_text_can_not_be_seen = list(set(range(shape[0])).difference(set(normal_text_can_be_seen)))
         for _ in sub_normal_index:
@@ -245,6 +248,7 @@ class PreTrainingDataMan(object):
             pseudo_masked_lm_ids = [tokenizer.convert_tokens_to_ids(_) for _ in instance.pseudo_masked_lm_labels ]
             pseudo_masked_index = instance.pseudo_index
             masked_index = instance.masked_index
+            pseudo_masked_sub_list_len = [len(sub_list) for sub_list in pseudo_masked_lm_positions]
 
             while len(masked_lm_positions) < max_predictions_per_seq:
                 masked_lm_positions.append(0)
@@ -255,7 +259,6 @@ class PreTrainingDataMan(object):
                 masked_index.append(0)
                 pseudo_masked_lm_ids.append([0])
 
-            pseudo_masked_sub_list_len = [len(sub_list) for sub_list in pseudo_masked_lm_positions]
             while len(pseudo_masked_sub_list_len) < max_predictions_per_seq:
                 pseudo_masked_sub_list_len.append(0)
 
@@ -563,7 +566,7 @@ class PreTrainingDataMan(object):
             d = tf.data.TFRecordDataset(input_files)
 
         d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
-        d = d.map(lambda x: add_attention_mask(x, is_training)).repeat()
+        d = d.map(lambda x: add_attention_mask(x, is_training))
 
         d = d.batch(batch_size=batch_size, drop_remainder=True)
 
