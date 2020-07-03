@@ -131,7 +131,5 @@ class DatamanTest(unittest.TestCase):
                     continue
 
 
-            print(attention_mask)
-
 if __name__ == "__main__":
     unittest.main()

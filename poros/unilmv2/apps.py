@@ -8,6 +8,7 @@ email: diqiuzhuanzhuan@gmail.com
 import tensorflow as tf
 import os
 from poros_dataset import about_tensor
+from poros_train import optimization
 from poros.unilmv2 import PreTrainingDataMan
 from poros.unilmv2.config import Unilmv2Config
 from poros.unilmv2 import (
@@ -20,7 +21,7 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=1, random_seed=2334)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20, random_seed=2334)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     ptdm.create_pretraining_data(input_file, output_file)
@@ -31,9 +32,20 @@ def pretrain():
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
     reduce_lr = ReduceLROnPlateau(monitor='masked_lm_loss', factor=0.8,
                                   patience=10, min_lr=0)
+    epoches=2000
+    steps_per_epoch=15
+    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epoches * steps_per_epoch, num_warmup_steps=24000)
+    #unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=6e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-6))
+    unilmv2_model.compile(optimizer=optimizer)
 
-    unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=6e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-6))
-    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15, callbacks=[reduce_lr])
+    checkpoint_filepath = '/tmp/checkpoint'
+    model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+        filepath=checkpoint_filepath,
+        save_weights_only=True,
+        monitor='masked_lm_loss',
+        mode='max',
+        save_best_only=True)
+    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15, callbacks=[model_checkpoint_callback])
 
 
 class Unilmv2Model(tf.keras.Model):
@@ -93,6 +105,7 @@ class Unilmv2Model(tf.keras.Model):
             self.add_metric(pseudo_masked_lm_accuracy_metric)
             self.add_metric(masked_lm_loss_metric)
             self.add_metric(pseudo_masked_lm_loss_metric)
+        self.summary()
 
         return total_loss
 
