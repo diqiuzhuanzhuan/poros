@@ -140,6 +140,8 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
         segment_embeddings, _ = self.token_type_embedding_layer(
             segment_ids
         )
+        tf.debugging.check_numerics(position_embeddings, message="position_embeddings is NAN")
+        tf.debugging.check_numerics(segment_embeddings, message="segment_embeddings is NAN")
         input_embeddings = word_embeddings + position_embeddings + segment_embeddings
         input_embeddings = self.normalization_layer(inputs=input_embeddings)
 

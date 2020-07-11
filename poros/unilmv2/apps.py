@@ -16,7 +16,6 @@ from poros.unilmv2 import (
     MaskLmLayer,
     PseudoMaskLmLayer
 )
-from tensorflow.keras.callbacks import ReduceLROnPlateau
 
 
 def pretrain():
@@ -30,12 +29,9 @@ def pretrain():
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
-    reduce_lr = ReduceLROnPlateau(monitor='masked_lm_loss', factor=0.8,
-                                  patience=10, min_lr=0)
     epoches=2000
     steps_per_epoch=15
-    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epoches * steps_per_epoch, num_warmup_steps=24000)
-    #unilmv2_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=6e-4, beta_1=0.9, beta_2=0.98, epsilon=1e-6))
+    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epoches * steps_per_epoch, num_warmup_steps=1500)
     unilmv2_model.compile(optimizer=optimizer)
 
     checkpoint_filepath = '/tmp/checkpoint'
@@ -45,7 +41,13 @@ def pretrain():
         monitor='masked_lm_loss',
         mode='max',
         save_best_only=True)
-    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15, callbacks=[model_checkpoint_callback])
+    if os.path.exists(checkpoint_filepath) and False:
+        try:
+            unilmv2_model.load_weights(checkpoint_filepath)
+        except Exception as e:
+            print(e)
+    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15,
+                      callbacks=[model_checkpoint_callback, tf.keras.callbacks.TensorBoard("/tmp/unilmv2")])
 
 
 class Unilmv2Model(tf.keras.Model):
@@ -66,6 +68,10 @@ class Unilmv2Model(tf.keras.Model):
     def call(self, inputs):
         self.unilmv2_layer(inputs)
         masked_lm_input = self.unilmv2_layer.get_sequence_output()
+        tf.debugging.check_numerics(masked_lm_input, "masked_lm_input", name=None)
+        tf.debugging.check_numerics(
+            self.unilmv2_layer.get_embedding_table(), "embeeding_table", name=None
+        )
 
         masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = self.mask_lm_layer(
             masked_lm_input,
