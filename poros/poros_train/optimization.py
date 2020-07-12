@@ -21,7 +21,6 @@ from tensorflow.python.keras import backend as K
 from tensorflow.python.platform import tf_logging as logging
 
 
-
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     """Applys a warmup schedule on a given learning rate decay schedule."""
 
@@ -66,36 +65,14 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
         logs['lr'] = K.get_value(self.model.optimizer.lr)
+
         current = logs.get(self.monitor)
         if current is None:
             logging.warning('Reduce LR on plateau conditioned on metric `%s` '
                             'which is not available. Available metrics are: %s',
                             self.monitor, ','.join(list(logs.keys())))
-
         else:
-            if self.in_cooldown():
-                self.cooldown_counter -= 1
-                self.wait = 0
-
-            if self.monitor_op(current, self.best):
-                self.best = current
-                self.wait = 0
-            elif not self.in_cooldown():
-                self.wait += 1
-                if self.wait >= self.patience:
-                    old_lr = float(K.get_value(self.model.optimizer.lr))
-                    if old_lr > self.min_lr:
-                        new_lr = old_lr * self.factor
-                        new_lr = max(new_lr, self.min_lr)
-                        K.set_value(self.model.optimizer.lr, new_lr)
-                        if self.verbose > 0:
-                            print('\nEpoch %05d: ReduceLROnPlateau reducing learning '
-                                  'rate to %s.' % (epoch + 1, new_lr))
-                        self.cooldown_counter = self.cooldown
-                        self.wait = 0
-
-    def in_cooldown(self):
-        return self.cooldown_counter > 0
+            print("current learning rate is {}".format(logs['lr']))
 
 
 def create_optimizer(init_lr, num_train_steps, num_warmup_steps):

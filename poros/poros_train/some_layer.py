@@ -9,6 +9,7 @@ email: diqiuzhuanzhuan@gmail.com
 import tensorflow as tf
 from poros.poros_dataset import about_tensor
 from poros.poros_train import acitvation_function
+from tensorflow.python.framework import tensor_shape
 
 
 def dropout(input_tensor, dropout_prob):
@@ -80,7 +81,7 @@ class AttentionLayer(tf.keras.layers.Layer):
 
         :rtype: object
         """
-        super(AttentionLayer, self).__init__()
+        super(AttentionLayer, self).__init__(name=name_scope)
         self.num_attention_heads = num_attention_heads
         self.size_per_head = size_per_head
         self.query_act = query_act
@@ -216,6 +217,7 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.attention_layers = []
         self.attention_outputs = []
         self.attention_outputs_layer_norm = []
+        self.attention_outputs_rezero_layers = []
         self.intermediate_outputs = []
         self.size_per_head = int(self.hidden_size / self.num_attention_heads)
         self.outputs = []
@@ -242,6 +244,10 @@ class TransformerLayer(tf.keras.layers.Layer):
                         layer.build(input_shape=[None, None, self.hidden_size])
                         self.attention_outputs_layer_norm.append(layer)
 
+                    with tf.name_scope("output/RezeroLayer"):
+                        layer = RezeroLayer()
+                        self.attention_outputs_rezero_layers.append(layer)
+
                 with tf.name_scope("intermediate/dense"):
                     layer = tf.keras.layers.Dense(
                         self.intermediate_size,
@@ -257,7 +263,6 @@ class TransformerLayer(tf.keras.layers.Layer):
                             kernel_initializer=create_initializer(self.initializer_range))
                         layer.build(input_shape=[None, self.intermediate_size])
                         self.outputs.append(layer)
-
                     with tf.name_scope("LayerNorm"):
                         layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
                         layer.build(input_shape=[None, None, self.hidden_size])
@@ -294,12 +299,16 @@ class TransformerLayer(tf.keras.layers.Layer):
              attention_output_layer_norm,
              intermediate_output,
              output,
-             output_layer_norm) in zip(self.attention_layers,
+             output_layer_norm,
+             attention_outputs_rezero_layer,
+             ) in zip(self.attention_layers,
                                    self.attention_outputs,
                                    self.attention_outputs_layer_norm,
                                    self.intermediate_outputs,
                                    self.outputs,
-                                   self.outputs_layer_norm):
+                                   self.outputs_layer_norm,
+                                   self.attention_outputs_rezero_layers,
+                                    ):
             layer_input = prev_output
             attention_heads = []
             attention_head = attention_layer(layer_input, layer_input, layer_input, attention_mask)
@@ -315,7 +324,10 @@ class TransformerLayer(tf.keras.layers.Layer):
                 # with `layer_input`.
             attention_output = attention_output_layer(attention_output)
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
+
             attention_output = attention_output_layer_norm(attention_output + layer_input)
+            attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
+            #attention_output = attention_output_layer_norm(attention_output)
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             # The activation is only applied to the "intermediate" hidden layer.
@@ -324,7 +336,8 @@ class TransformerLayer(tf.keras.layers.Layer):
             # Down-project back to `hidden_size` then add the residual.
             layer_output = output(intermediate_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
-            layer_output = output_layer_norm(layer_output + attention_output)
+           # layer_output = output_layer_norm(layer_output + attention_output)
+            layer_output = attention_output + attention_outputs_rezero_layer(layer_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
             all_layer_outputs.append(layer_output)
@@ -453,3 +466,27 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
         output = tf.reshape(output, input_shape[0:-1] + [input_shape[-1] * self.embedding_size])
         return output, self.embedding_table
 
+
+class RezeroLayer(tf.keras.layers.Layer):
+
+    def __init__(self, axis=-1, trainable=True):
+        super(RezeroLayer, self).__init__(trainable=trainable)
+
+    def build(self, input_shape):
+        ndims = len(input_shape)
+        if ndims is None:
+            raise ValueError('Input shape %s has undefined rank.' % input_shape)
+        if ndims < 2:
+            raise ValueError('Input shape %s must be longer than 1.' % input_shape)
+
+        tensor_shape.TensorShape(input_shape)
+        shape = [tensor_shape.dimension_value(input_shape[-2]), tensor_shape.dimension_value(input_shape[-1])]
+        self.alpha = self.add_weight(name="alpha",
+                        shape=shape,
+                        initializer=tf.initializers.Zeros,
+                        trainable=True)
+        self.built = True
+
+    def call(self, inputs):
+        outputs = tf.multiply(self.alpha, inputs)
+        return outputs
