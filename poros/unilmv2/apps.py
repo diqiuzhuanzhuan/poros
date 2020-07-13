@@ -39,14 +39,14 @@ def pretrain():
         filepath=checkpoint_filepath,
         save_weights_only=True,
         monitor='masked_lm_loss',
-        mode='max',
+        mode='auto',
         save_best_only=True)
-    if os.path.exists(checkpoint_filepath) and False:
+    if os.path.exists(checkpoint_filepath):
         try:
             unilmv2_model.load_weights(checkpoint_filepath)
         except Exception as e:
             print(e)
-    unilmv2_model.fit(dataset, epochs=2000, steps_per_epoch=15,
+    unilmv2_model.fit(dataset, epochs=epoches, steps_per_epoch=15,
                       callbacks=[model_checkpoint_callback, tf.keras.callbacks.TensorBoard("/tmp/unilmv2")])
 
 
@@ -68,10 +68,6 @@ class Unilmv2Model(tf.keras.Model):
     def call(self, inputs):
         self.unilmv2_layer(inputs)
         masked_lm_input = self.unilmv2_layer.get_sequence_output()
-        tf.debugging.check_numerics(masked_lm_input, "masked_lm_input", name=None)
-        tf.debugging.check_numerics(
-            self.unilmv2_layer.get_embedding_table(), "embeeding_table", name=None
-        )
 
         masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = self.mask_lm_layer(
             masked_lm_input,

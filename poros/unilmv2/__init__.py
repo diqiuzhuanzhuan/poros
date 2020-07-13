@@ -16,3 +16,4 @@ from .modeling import (
     Unilmv2Layer
 )
 from .dataman import PreTrainingDataMan
+from .apps import Unilmv2Model
