@@ -29,7 +29,7 @@ output_file = "my_output_file" #the output file is a tfrecord file
 ptdm.create_pretraining_data(input_file, output_file)
 dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
 ```
-- create unilmv2 model
+- create unilmv2 model and train it
 ```python
 from poros.unilmv2.config import Unilmv2Config
 from poros.unilmv2 import Unilmv2Model
@@ -56,7 +56,7 @@ the configuration is like this:
   "type_vocab_size": 2, 
   "vocab_size": 21131
 }
-A json file recording these configuration is recommend.
+A json file recording these configuration is recommended.
 """
 json_file = "my_config_file"
 unilmv2_config = Unilmv2Config.from_json_file(json_file)
