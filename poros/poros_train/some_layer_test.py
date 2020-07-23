@@ -9,6 +9,7 @@ email: diqiuzhuanzhuan@gmail.com
 import tensorflow as tf
 from poros.poros_train import some_layer
 from poros_dataset.about_tensor import get_shape
+import numpy as np
 
 
 class SomeLayerTest(tf.test.TestCase):
@@ -49,13 +50,37 @@ class SomeLayerTest(tf.test.TestCase):
         q = tf.random.truncated_normal(shape=[1, 10, 768])
         k = q
         v = q
-        import numpy as np
         numpy_mask = np.zeros(shape=[1, 10, 10])
         numpy_mask[:, :, 0] = 1
         attention_mask = tf.constant(value=numpy_mask)
 
         res = attention_layer(q, k, v, attention_mask=attention_mask)
         print(res)
+
+    def test_rpr_attention_layer(self):
+        clip_k = 5
+        attention_layer = some_layer.AttentionLayerWithRPR(num_attention_heads=12, size_per_head=64, clip_k=5)
+        rpr_matrix = some_layer.create_rpr_matrix(clip_k, 10, 10)
+        q = tf.random.truncated_normal(shape=[1, 10, 768])
+        k = q
+        v = q
+        res = attention_layer(q, k, v, rpr_matrix=rpr_matrix)
+        print(res)
+
+    def test_create_rpr_matrix(self):
+        k = 5
+        from_length = 11
+        to_length = 10
+        matrix = some_layer.create_rpr_matrix(k, from_length, to_length)
+        print(matrix)
+        for i in range(from_length):
+            for j in range(to_length):
+                if j - i < -k:
+                    self.assertEqual(matrix[i, j], 0)
+                elif j - i > k:
+                    self.assertEqual(matrix[i, j], 2*k)
+                else:
+                    self.assertEqual(matrix[i, j], j - i + k)
 
 
 if __name__ == "__main__":
