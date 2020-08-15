@@ -10,6 +10,7 @@ import tensorflow as tf
 from poros.poros_dataset import about_tensor
 from poros.poros_train import acitvation_function
 from tensorflow.python.framework import tensor_shape
+import numpy as np
 
 
 def dropout(input_tensor, dropout_prob):
@@ -63,6 +64,191 @@ def create_initializer(initializer_range=0.02, name="truncated_normal"):
         return tf.keras.initializers.RandomNormal(stddev=initializer_range)
     else:
         raise ValueError("no initializer named :{}".format(name))
+
+
+def create_rpr_matrix(k, from_length, to_length):
+    """
+    we want a matrix like below:
+    [
+        [ 0,  1, 2, 3, ..., k, k, k],
+        [-1,  0, 1, 2, ..., k, k, k],
+        [-2, -1, 0, 1, ..., k, k, k],
+        ...
+        [-k, -k, -k,  ...,  0,  1,  2],
+        [-k, -k, -k,  ...,  -1, 0,  1],
+        [-k, -k, -k,  ...,  -2, -1, 0],
+    ]
+
+    :param k:
+    :param from_length:
+    :param to_length:
+    :return:
+    """
+
+    def __clip(x, k):
+        return max(-k, min(k, x))
+
+    matrix = np.ones(shape=[from_length, to_length], dtype=np.int)
+    for i in range(from_length):
+        for j in range(to_length):
+            matrix[i, j] = __clip(j - i, k)
+    matrix += k
+    return matrix
+
+
+class AttentionLayerWithRPR(tf.keras.layers.Layer):
+
+    def __init__(self,
+                 num_attention_heads=1,
+                 size_per_head=512,
+                 query_act=None,
+                 key_act=None,
+                 value_act=None,
+                 attention_probs_dropout_prob=0.0,
+                 initializer_range=0.02,
+                 do_return_2d_tensor=False,
+                 clip_k=5,
+                 name_scope="attention"):
+        """
+
+        :rtype: object
+        """
+        super(AttentionLayerWithRPR, self).__init__(name=name_scope)
+        self.num_attention_heads = num_attention_heads
+        self.size_per_head = size_per_head
+        self.query_act = query_act
+        self.key_act = key_act
+        self.attention_probs_dropout_prob = attention_probs_dropout_prob
+        self.initializer_range = initializer_range
+        self.do_return_2d_tensor = do_return_2d_tensor
+        self.clip_k = clip_k
+        self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
+                                        activation=query_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
+        self.wk = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
+                                        activation=key_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
+        self.wv = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
+                                        activation=value_act,
+                                        kernel_initializer=create_initializer(initializer_range=0.01))
+        self.krpr = tf.Variable(name="krpr",
+                                initial_value=tf.initializers.TruncatedNormal()(shape=[2*clip_k+1, self.size_per_head]))
+        self.vrpr = tf.Variable(name="vrpr",
+                                initial_value=tf.initializers.TruncatedNormal()(shape=[2*clip_k+1, self.size_per_head]))
+
+        with tf.name_scope("query"):
+            self.wq.build(input_shape=[None, size_per_head * num_attention_heads])
+        with tf.name_scope("key"):
+            self.wk.build(input_shape=[None, size_per_head * num_attention_heads])
+        with tf.name_scope("value"):
+            self.wv.build(input_shape=[None, size_per_head * num_attention_heads])
+
+    def transpose_for_scores(self, x, batch_size):
+        x = tf.reshape(x, shape=[batch_size, -1, self.num_attention_heads, self.size_per_head])
+        # shape is [B, N, F, H]
+        return tf.transpose(x, [0, 2, 1, 3])
+
+    def call(self, q, k, v,
+             attention_mask=None,
+             batch_size=None,
+             from_seq_length=None,
+             to_seq_length=None,
+             rpr_matrix=None
+             ):
+        # Scalar dimensions referenced here:
+        #   B = batch size (number of sequences)
+        #   F = `from_tensor` sequence length
+        #   T = `to_tensor` sequence length
+        #   N = `num_attention_heads`
+        #   H = `size_per_head
+        # q : [B, F, H]
+
+        # convert to [B * F, N * H]
+
+        from_shape = about_tensor.get_shape(q, expected_rank=[2, 3])
+        to_shape = about_tensor.get_shape(k, expected_rank=[2, 3])
+
+        if len(from_shape) != len(to_shape):
+            raise ValueError(
+                "The rank of `from_tensor` must match the rank of `to_tensor`.")
+
+        if len(from_shape) == 3:
+            batch_size = from_shape[0]
+            from_seq_length = from_shape[1]
+            to_seq_length = to_shape[1]
+        elif len(from_shape) == 2:
+            if (batch_size is None or from_seq_length is None or to_seq_length is None):
+                raise ValueError(
+                    "When passing in rank 2 tensors to attention_layer, the values "
+                    "for `batch_size`, `from_seq_length`, and `to_seq_length` "
+                    "must all be specified.")
+
+        q = about_tensor.reshape_to_matrix(q)
+        # convert to [B * T, N * H]
+        k = about_tensor.reshape_to_matrix(k)
+        v = about_tensor.reshape_to_matrix(v)
+
+        # query_layer: [B, F, N*H]
+        query_layer = self.wq(q)
+        key_layer = self.wk(k)
+        value_layer = self.wv(v)
+        # query_layer = [B, N, F, H]
+        query_layer = self.transpose_for_scores(query_layer, batch_size)
+        key_layer = self.transpose_for_scores(key_layer, batch_size)
+        # attention_score's shape is [B, N, F, T]
+        attention_score = tf.matmul(query_layer, key_layer, transpose_b=True)
+        if rpr_matrix is not None:
+            alpha = tf.gather(self.krpr, rpr_matrix)
+            origin_shape = about_tensor.get_shape(query_layer)
+            query_layer = tf.reshape(query_layer, shape=[batch_size, self.num_attention_heads, from_seq_length, 1, self.size_per_head])
+            alpha_score = tf.matmul(query_layer, alpha, transpose_b=True)
+            alpha_score = tf.reshape(alpha_score, shape=[batch_size, self.num_attention_heads, from_seq_length, to_seq_length])
+            attention_score = alpha_score + attention_score
+            query_layer = tf.reshape(query_layer, shape=origin_shape)
+
+        attention_score = attention_score / tf.math.sqrt(float(self.size_per_head))
+
+        if attention_mask is not None:
+            # `attention_mask` = [B, 1, F, T]
+            attention_mask = tf.expand_dims(attention_mask, axis=[1])
+
+            # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
+            # masked positions, this operation will create a tensor which is 0.0 for
+            # positions we want to attend and -10000.0 for masked positions.
+            adder = (1.0 - tf.cast(attention_mask, tf.float32)) * -10000.0
+
+            # Since we are adding it to the raw scores before the softmax, this is
+            # effectively the same as removing these entirely.
+            attention_score += adder
+
+        attention_score = tf.nn.softmax(attention_score)
+        # `value_layer` = [B, N, T, H]
+        value_layer = self.transpose_for_scores(value_layer, batch_size)
+
+        # `context_layer` = [B, N, F, H]
+        context_layer = tf.matmul(attention_score, value_layer)
+        if rpr_matrix is not None:
+            # `alpha` = [F, T, H]
+            alpha = tf.gather(self.krpr, rpr_matrix)
+            origin_shape = about_tensor.get_shape(attention_score)
+            attention_score = tf.reshape(attention_score, shape=[batch_size, self.num_attention_heads, from_seq_length, 1, to_seq_length])
+            alpha_layer = tf.reshape(tf.matmul(attention_score, alpha), shape=[batch_size, self.num_attention_heads, to_seq_length, self.size_per_head])
+            context_layer = alpha_layer + context_layer
+            attention_score = tf.reshape(attention_score, origin_shape)
+        # `context_layer` = [B, F, N, H]
+        context_layer = tf.transpose(context_layer, [0, 2, 1, 3])
+        # we need to concat all heads, now
+        if self.do_return_2d_tensor:
+            # `context_layer` = [B * F, N * H]
+            context_layer = tf.reshape(context_layer,
+                                       [-1,
+                                        self.num_attention_heads * self.size_per_head])
+        else:
+            # `context_layer` = [B, F, N * H]
+            context_layer = tf.reshape(context_layer,
+                                       [batch_size, -1, self.num_attention_heads * self.size_per_head])
+
+        return context_layer
 
 
 class AttentionLayer(tf.keras.layers.Layer):
@@ -182,12 +368,12 @@ class AttentionLayer(tf.keras.layers.Layer):
         if self.do_return_2d_tensor:
             # `context_layer` = [B * F, N * H]
             context_layer = tf.reshape(context_layer,
-                                       [-1,
+                                       [batch_size * from_seq_length,
                                         self.num_attention_heads * self.size_per_head])
         else:
             # `context_layer` = [B, F, N * H]
             context_layer = tf.reshape(context_layer,
-                                       [batch_size, -1, self.num_attention_heads * self.size_per_head])
+                                       [batch_size, from_seq_length, self.num_attention_heads * self.size_per_head])
 
         return context_layer
 
@@ -203,7 +389,20 @@ class TransformerLayer(tf.keras.layers.Layer):
                  hidden_dropout_prob=0.1,
                  attention_probs_dropout_prob=0.1,
                  initializer_range=0.02,
-                 do_return_all_layers=False):
+                 do_return_all_layers=False,
+                 ):
+        """
+
+        :param hidden_size:
+        :param num_hidden_layers:
+        :param num_attention_heads:
+        :param intermediate_size:
+        :param intermediate_act_fn:
+        :param hidden_dropout_prob:
+        :param attention_probs_dropout_prob:
+        :param initializer_range:
+        :param do_return_all_layers:
+        """
         super(TransformerLayer, self).__init__()
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
@@ -219,6 +418,7 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.attention_outputs_layer_norm = []
         self.attention_outputs_rezero_layers = []
         self.intermediate_outputs = []
+        self.dense_output_rezero_layers = []
         self.size_per_head = int(self.hidden_size / self.num_attention_heads)
         self.outputs = []
         self.outputs_layer_norm = []
@@ -239,11 +439,9 @@ class TransformerLayer(tf.keras.layers.Layer):
                             kernel_initializer=create_initializer(self.initializer_range))
                         layer.build(input_shape=[None, self.hidden_size])
                         self.attention_outputs.append(layer)
-                    with tf.name_scope("output/LayerNorm"):
-                        layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
-                        layer.build(input_shape=[None, None, self.hidden_size])
+                    with tf.name_scope("output/norm"):
+                        layer = tf.keras.layers.LayerNormalization()
                         self.attention_outputs_layer_norm.append(layer)
-
                     with tf.name_scope("output/RezeroLayer"):
                         layer = RezeroLayer()
                         self.attention_outputs_rezero_layers.append(layer)
@@ -263,18 +461,13 @@ class TransformerLayer(tf.keras.layers.Layer):
                             kernel_initializer=create_initializer(self.initializer_range))
                         layer.build(input_shape=[None, self.intermediate_size])
                         self.outputs.append(layer)
-                    with tf.name_scope("LayerNorm"):
-                        layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
-                        layer.build(input_shape=[None, None, self.hidden_size])
-                        self.outputs_layer_norm.append(layer)
+                    with tf.name_scope("rezeor"):
+                        layer = RezeroLayer()
+                        self.dense_output_rezero_layers.append(layer)
 
     def call(self, inputs, attention_mask):
-        #input_tensor = features["input_tensor"]
-        #attention_mask = features["attention_mask"]
         input_tensor = inputs
         input_shape = about_tensor.get_shape(input_tensor, expected_rank=3)
-        batch_size = input_shape[0]
-        seq_length = input_shape[1]
         input_width = input_shape[2]
 
         if input_width % self.num_attention_heads != 0:
@@ -294,21 +487,16 @@ class TransformerLayer(tf.keras.layers.Layer):
 
         all_layer_outputs = []
 
-        for (attention_layer,
-             attention_output_layer,
-             attention_output_layer_norm,
-             intermediate_output,
-             output,
-             output_layer_norm,
-             attention_outputs_rezero_layer,
-             ) in zip(self.attention_layers,
-                                   self.attention_outputs,
-                                   self.attention_outputs_layer_norm,
-                                   self.intermediate_outputs,
-                                   self.outputs,
-                                   self.outputs_layer_norm,
-                                   self.attention_outputs_rezero_layers,
-                                    ):
+        for (attention_layer, attention_output_layer, intermediate_output, output,
+             attention_outputs_rezero_layer, dense_output_rezero_layer,attention_outputs_layer_norm) \
+                in zip(self.attention_layers,
+                       self.attention_outputs,
+                       self.intermediate_outputs,
+                       self.outputs,
+                       self.attention_outputs_rezero_layers,
+                       self.dense_output_rezero_layers,
+                       self.attention_outputs_layer_norm
+                       ):
             layer_input = prev_output
             attention_heads = []
             attention_head = attention_layer(layer_input, layer_input, layer_input, attention_mask)
@@ -325,9 +513,9 @@ class TransformerLayer(tf.keras.layers.Layer):
             attention_output = attention_output_layer(attention_output)
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
-            attention_output = attention_output_layer_norm(attention_output + layer_input)
-            attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
-            #attention_output = attention_output_layer_norm(attention_output)
+            #attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
+            attention_output = layer_input + attention_outputs_layer_norm(attention_output)
+            #attention_output = layer_input + attention_output
             attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             # The activation is only applied to the "intermediate" hidden layer.
@@ -336,8 +524,7 @@ class TransformerLayer(tf.keras.layers.Layer):
             # Down-project back to `hidden_size` then add the residual.
             layer_output = output(intermediate_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
-           # layer_output = output_layer_norm(layer_output + attention_output)
-            layer_output = attention_output + attention_outputs_rezero_layer(layer_output)
+            layer_output = attention_output + dense_output_rezero_layer(layer_output)
             layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
             all_layer_outputs.append(layer_output)
@@ -469,7 +656,7 @@ class PositionEmbeddingLayer(tf.keras.layers.Layer):
 
 class RezeroLayer(tf.keras.layers.Layer):
 
-    def __init__(self, axis=-1, trainable=True):
+    def __init__(self, trainable=True):
         super(RezeroLayer, self).__init__(trainable=trainable)
 
     def build(self, input_shape):
