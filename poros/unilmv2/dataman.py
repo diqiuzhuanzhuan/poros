@@ -153,10 +153,12 @@ def create_mask_matrix(instance: TrainingInstance):
 
 def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
     shape = [len(input_ids), len(input_ids)]
-    mask_matrix = np.ones(shape=[shape[0], 1]) * input_mask
+    return np.ones(shape=shape)
+    mask_matrix = np.ones(shape=[shape[0], 1], dtype=np.float) * input_mask
     non_zero = np.count_nonzero(input_mask)
     mask_matrix[non_zero:, :] = 0
     mask_matrix[:, non_zero:] = 0
+    return mask_matrix
     normal_text_can_be_seen = []
     pseudo_masked_sub_list_len = pseudo_masked_sub_list_len[0:np.count_nonzero(pseudo_masked_sub_list_len)]
     pseudo_masked_index = pseudo_masked_index[0:np.sum(pseudo_masked_sub_list_len)]
@@ -209,6 +211,15 @@ class PreTrainingDataMan(object):
         self.max_predictions_per_seq = max_predictions_per_seq
         self.short_seq_prob = short_seq_prob
         self.random_seed = random_seed
+
+        self.tokenizer = tokenization.FullTokenizer(
+            vocab_file=self.vocab_file, do_lower_case=self.do_lower_case)
+
+    def retrieve_id(self, ids):
+        return self.tokenizer.convert_ids_to_tokens(ids)
+
+    def retrieve_tokens(self, tokens):
+        return self.tokenizer.convert_tokens_to_ids(tokens)
 
     def write_instance_to_example_files(self, instances, tokenizer, max_seq_length,
                                         max_predictions_per_seq, output_files):
@@ -561,10 +572,9 @@ class PreTrainingDataMan(object):
                                                                  cycle_length=cycle_length,
                                                                  sloppy=is_training
                                                                  ))
-            #d = d.shuffle(buffer_size=100)
+            d = d.shuffle(buffer_size=1000)
         else:
             d = tf.data.TFRecordDataset(input_files)
-
         d = d.map(lambda record: about_tfrecord.parse_example(record, name_to_features))
         d = d.map(lambda x: add_attention_mask(x, is_training))
 
@@ -577,8 +587,11 @@ if __name__ == "__main__":
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     vocab_file = "./test_data/vocab.txt"
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=256)
-    ptdm.create_pretraining_data(input_file, output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=2)
+    tokenizer = tokenization.FullTokenizer(vocab_file=vocab_file, do_lower_case=True)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128)
+    if not os.path.exists(output_file):
+        ptdm.create_pretraining_data(input_file, output_file)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)
     for data in dataset:
-        print(data["attention_mask"])
+        ids = data["input_ids"].numpy()
+        print(tokenizer.convert_ids_to_tokens(ids[0]))

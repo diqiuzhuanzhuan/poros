@@ -11,12 +11,13 @@ from poros_train.some_layer import (
     PositionEmbeddingLayer,
     TokenTypeEmbeddingLayer,
     EmbeddingLookupLayer,
-    TransformerLayer,
-    create_initializer
+    create_initializer,
+    TransformerLayer
 )
 from poros_dataset import about_tensor
 from poros_train import acitvation_function
 import copy
+from poros_train.google_code import transformer_model
 
 
 class Unilmv2Layer(tf.keras.layers.Layer):
@@ -70,10 +71,12 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "segment_ids": segment_ids
         })
         self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
+        #self.all_encoder_layers = transformer_model(self.embedding_output, attention_mask=None, do_return_all_layers=True)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
-        self.pooled_output = self.pooler_layer(first_token_tensor)
-        return self.pooled_output
+        #self.pooled_output = self.pooler_layer(first_token_tensor)
+        #return self.pooled_output
+        return self.sequence_output
 
     def get_sequence_output(self):
         """Gets final hidden layer of encoder.
@@ -140,8 +143,6 @@ class InputEmbeddingLayer(tf.keras.layers.Layer):
         segment_embeddings, _ = self.token_type_embedding_layer(
             segment_ids
         )
-        tf.debugging.check_numerics(position_embeddings, message="position_embeddings is NAN")
-        tf.debugging.check_numerics(segment_embeddings, message="segment_embeddings is NAN")
         input_embeddings = word_embeddings + position_embeddings + segment_embeddings
         input_embeddings = self.normalization_layer(inputs=input_embeddings)
 

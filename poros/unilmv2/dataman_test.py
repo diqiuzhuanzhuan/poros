@@ -70,7 +70,6 @@ class DatamanTest(unittest.TestCase):
             masked_lm_labels=masked_lm_labels,
             masked_index=mask_index
         )
-        #masked_matrix = create_mask_matrix(instance)
         flatten_index = [x for _ in instance.pseudo_index for x in _]
         masked_matrix = create_attention_mask(instance.tokens, input_mask, flatten_index, pseudo_masked_sub_list_len)
         expected_matrix = [
@@ -97,7 +96,7 @@ class DatamanTest(unittest.TestCase):
     def test_create_pretrain_data(self):
         vocab_file = os.path.join(os.path.dirname(__file__), "test_data", "vocab.txt")
         input_file = os.path.join(os.path.dirname(__file__), "../bert/sample_text.txt")
-        output_file = os.path.join(os.path.dirname(__file__), "pretraining_data")
+        output_file = os.path.join(os.path.dirname(__file__), "test_data", "pretraining_data")
         ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20)
         ptdm.create_pretraining_data(input_file, output_file)
         dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)

@@ -20,18 +20,24 @@ from poros.unilmv2 import (
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=20, random_seed=2334)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=5, random_seed=100)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
-    ptdm.create_pretraining_data(input_file, output_file)
+    if not os.path.exists(output_file):
+        ptdm.create_pretraining_data(input_file, output_file)
+    eval_output_file = "./eval_pretraining_data"
+    if not os.path.exists(eval_output_file):
+        ptdm.create_pretraining_data(input_file, eval_output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
+
     dataset = dataset.repeat()
+    eval_dataset = ptdm.read_data_from_tfrecord(eval_output_file, is_training=False, batch_size=8)
     json_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "bert_config.json")
     unilmv2_config = Unilmv2Config.from_json_file(json_file)
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
-    epoches=2000
-    steps_per_epoch=15
-    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epoches * steps_per_epoch, num_warmup_steps=1500)
+    epochs = 2000
+    steps_per_epoch = 15
+    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epochs * steps_per_epoch, num_warmup_steps=1500)
     unilmv2_model.compile(optimizer=optimizer)
 
     checkpoint_filepath = '/tmp/checkpoint'
@@ -40,14 +46,17 @@ def pretrain():
         save_weights_only=True,
         monitor='masked_lm_loss',
         mode='auto',
-        save_best_only=True)
+        save_best_only=False,
+        save_freq=10)
     if os.path.exists(checkpoint_filepath):
         try:
             unilmv2_model.load_weights(checkpoint_filepath)
         except Exception as e:
             print(e)
-    unilmv2_model.fit(dataset, epochs=epoches, steps_per_epoch=15,
+    unilmv2_model.fit(dataset, epochs=epochs, steps_per_epoch=15,
                       callbacks=[model_checkpoint_callback, tf.keras.callbacks.TensorBoard("/tmp/unilmv2")])
+    unilmv2_model.evaluate(eval_dataset)
+    unilmv2_model.save_weights(filepath=checkpoint_filepath)
 
 
 class Unilmv2Model(tf.keras.Model):
