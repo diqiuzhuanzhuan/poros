@@ -17,7 +17,6 @@ from poros_train.some_layer import (
 from poros_dataset import about_tensor
 from poros_train import acitvation_function
 import copy
-from poros_train.google_code import transformer_model
 
 
 class Unilmv2Layer(tf.keras.layers.Layer):

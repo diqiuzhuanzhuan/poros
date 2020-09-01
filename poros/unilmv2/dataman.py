@@ -21,7 +21,7 @@ class Sample(object):
     def __init__(self, do_whole_word=False):
         self.do_whole_word = do_whole_word
 
-    def block_wise_masking(self, tokens, max_predictions_per_seq=20, mask_ratio=0.15):
+    def block_wise_masking(self, tokens, vocab_words, max_predictions_per_seq=20, mask_ratio=0.15):
         if not isinstance(tokens, list):
             raise TypeError("input must be list")
         not_include_mask = set()
@@ -73,7 +73,13 @@ class Sample(object):
                     output_tokens.append("[Pseudo]")
                     output_tokens_positions.append(pseudo_position)
                 for masked_position in pseudo_masked_positions:
-                    output_tokens.append("[MASK]")
+                    if random.random() < 0.8:
+                        output_tokens.append("[MASK]")
+                    else:
+                        if random.random() < 0.5:
+                            output_tokens.append(tokens[masked_position])
+                        else:
+                            output_tokens.append(vocab_words[random.randint(0, len(vocab_words)-1)])
                     masked_index.append(len(output_tokens)-1)
                     output_tokens_positions.append(masked_position)
                 sorted_pseudo_masked_lm_positions.pop(0)
@@ -462,7 +468,7 @@ class PreTrainingDataMan(object):
                     tokens.append("[EOS]")
 
                     (tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels, pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index) =\
-                        self.sample.block_wise_masking(tokens, max_predictions_per_seq, masked_lm_prob)
+                        self.sample.block_wise_masking(tokens, vocab_words, max_predictions_per_seq, masked_lm_prob)
                     segment_id = 0
                     segment_ids = []
                     for token in tokens:

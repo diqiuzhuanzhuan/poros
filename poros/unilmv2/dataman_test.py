@@ -24,15 +24,16 @@ class SampleTest(unittest.TestCase):
         x = ["[SOS]", "你", "好", "我", "是", "20", "##19", "一", "个", "好",
              "的", "人", "[EOS]", "你", "呢", "你", "在", "干", "嘛", "呢", "[EOS]"]
         for i in range(1000):
-            M = self.sample.block_wise_masking(x, max_predictions_per_seq=0, mask_ratio=0.15)
+            vocab_words = list(set(x).difference(set({"[SOS]", "[EOS]"})))
+            M = self.sample.block_wise_masking(x, vocab_words, max_predictions_per_seq=0, mask_ratio=0.15)
             self.assertFalse("[MASK]" in M[0])
             self.assertLessEqual(len(M[4]), 0)
             (output_tokens, output_tokens_positions, masked_lm_positions, masked_lm_labels,
              pseudo_masked_lm_positions, pseudo_masked_lm_labels, pseudo_index, masked_index) = \
-                self.sample.block_wise_masking(x, max_predictions_per_seq=4, mask_ratio=0.30)
+                self.sample.block_wise_masking(x, vocab_words, max_predictions_per_seq=4, mask_ratio=0.30)
             print(output_tokens)
-            for i in masked_index:
-                self.assertTrue(output_tokens[i] == '[MASK]')
+            #for i, j in zip(masked_index, masked_lm_positions):
+            #    self.assertTrue(output_tokens[i] == '[MASK]' or output_tokens[i] == x[j] or output_tok)
             for i in pseudo_index:
                 for j in i:
                     self.assertTrue(output_tokens[j] == '[Pseudo]', "index is {}, tokens is {}".format(j, output_tokens[j]))
