@@ -159,12 +159,10 @@ def create_mask_matrix(instance: TrainingInstance):
 
 def create_attention_mask(input_ids, input_mask, pseudo_masked_index, pseudo_masked_sub_list_len):
     shape = [len(input_ids), len(input_ids)]
-    return np.ones(shape=shape)
     mask_matrix = np.ones(shape=[shape[0], 1], dtype=np.float) * input_mask
     non_zero = np.count_nonzero(input_mask)
     mask_matrix[non_zero:, :] = 0
     mask_matrix[:, non_zero:] = 0
-    return mask_matrix
     normal_text_can_be_seen = []
     pseudo_masked_sub_list_len = pseudo_masked_sub_list_len[0:np.count_nonzero(pseudo_masked_sub_list_len)]
     pseudo_masked_index = pseudo_masked_index[0:np.sum(pseudo_masked_sub_list_len)]
