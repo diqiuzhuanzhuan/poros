@@ -20,7 +20,7 @@ from poros.unilmv2 import (
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=5, random_seed=100)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=1, random_seed=100)
     input_file = "../bert/sample_text.txt"
     output_file = "./pretraining_data"
     if not os.path.exists(output_file):

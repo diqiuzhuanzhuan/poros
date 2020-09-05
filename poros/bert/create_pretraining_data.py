@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import collections
 import random
-from bert import tokenization
+from poros.bert import tokenization
 import tensorflow as tf
 from absl import flags
 from absl import app
