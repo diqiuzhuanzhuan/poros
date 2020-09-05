@@ -7,15 +7,15 @@ email: diqiuzhuanzhuan@gmail.com
 """
 import tensorflow as tf
 from poros.unilmv2 import Unilmv2Config
-from poros_train.some_layer import (
+from poros.poros_train.some_layer import (
     PositionEmbeddingLayer,
     TokenTypeEmbeddingLayer,
     EmbeddingLookupLayer,
     create_initializer,
     TransformerLayer
 )
-from poros_dataset import about_tensor
-from poros_train import acitvation_function
+from poros.poros_dataset import about_tensor
+from poros.poros_train import acitvation_function
 import copy
 
 

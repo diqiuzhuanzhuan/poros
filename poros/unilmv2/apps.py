@@ -7,8 +7,8 @@ email: diqiuzhuanzhuan@gmail.com
 """
 import tensorflow as tf
 import os
-from poros_dataset import about_tensor
-from poros_train import optimization
+from poros.poros_dataset import about_tensor
+from poros.poros_train import optimization
 from poros.unilmv2 import PreTrainingDataMan
 from poros.unilmv2.config import Unilmv2Config
 from poros.unilmv2 import (

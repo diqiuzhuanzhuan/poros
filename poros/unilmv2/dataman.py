@@ -12,7 +12,7 @@ import tensorflow as tf
 import numpy as np
 import os
 from poros.poros_dataset import about_tfrecord
-from poros_dataset import about_tensor
+from poros.poros_dataset import about_tensor
 import logging
 
 

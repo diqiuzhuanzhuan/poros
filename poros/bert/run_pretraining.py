@@ -25,7 +25,7 @@ import tensorflow as tf
 from absl import flags
 from absl import app
 import logging
-from poros_train import restore
+from poros.poros_train import restore
 import tensorflow_addons as tfa
 
 
