@@ -22,7 +22,7 @@ import random
 import re
 
 
-import modeling
+from poros.bert import modeling
 import six
 import tensorflow as tf
 

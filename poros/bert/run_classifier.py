@@ -21,9 +21,7 @@ from __future__ import print_function
 import collections
 import csv
 import os
-import modeling
-import optimization
-import tokenization
+from poros.bert import modeling, optimization, tokenization
 import tensorflow as tf
 from absl import flags
 from absl import app

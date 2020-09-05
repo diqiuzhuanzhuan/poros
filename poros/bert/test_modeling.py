@@ -9,7 +9,7 @@ email: diqiuzhuanzhuan@gmail.com
 import unittest
 import tensorflow as tf
 import numpy as np
-import modeling
+from poros.bert import modeling
 
 
 class TestModeling(unittest.TestCase):
