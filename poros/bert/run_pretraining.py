@@ -130,19 +130,21 @@ class SiameseBertModel(tf.keras.Model):
 
     def call(self, features):
         input_ids_a = features["input_ids_a"]
+        input_mask_a = features["input_mask_a"]
         input_ids_b = features["input_ids_b"]
+        input_mask_b = features["input_mask_b"]
         y_true = tf.reshape(features["label_id"], shape=[-1])
 
         bert_layer_output_1 = self.bert_layer(
             input_ids_a,
-            None,
+            input_mask_a,
             None,
             "bert",
             self.use_one_hot_embeddings
         )
         bert_layer_output_2 = self.bert_layer(
             input_ids_b,
-            None,
+            input_mask_b,
             None,
             "bert",
             self.use_one_hot_embeddings

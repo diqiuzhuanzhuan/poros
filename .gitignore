@@ -13,3 +13,5 @@ poros/unilmv2/pretraining_data
 poros/unilmv2/*data
 .vscode
 *.log
+.DS_Store
+*/test_data/*

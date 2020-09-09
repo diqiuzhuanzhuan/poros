@@ -185,10 +185,14 @@ class SiameseFeatures(object):
 
     def __init__(self,
                  input_ids_a,
+                 input_mask_a,
                  input_ids_b,
+                 input_mask_b,
                  label_id):
         self.input_ids_a = input_ids_a
+        self.input_mask_a = input_mask_a
         self.input_ids_b = input_ids_b
+        self.input_mask_b = input_mask_b
         self.label_id = label_id
 
 
@@ -422,7 +426,9 @@ class SiameseProcessor(DataProcessor):
         self.max_seq_length = max_seq_length
         self.name_to_features = {
             "input_ids_a": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "input_mask_a": tf.io.FixedLenFeature([max_seq_length], tf.int64),
             "input_ids_b": tf.io.FixedLenFeature([max_seq_length], tf.int64),
+            "input_mask_b": tf.io.FixedLenFeature([max_seq_length], tf.int64),
             "label_id": tf.io.FixedLenFeature([1], tf.int64)
         }
 
@@ -473,7 +479,9 @@ class SiameseProcessor(DataProcessor):
         for ele in features:
             features = collections.OrderedDict()
             features["input_ids_a"] = about_tfrecord._int64_feature(ele.input_ids_a)
+            features["input_mask_a"] = about_tfrecord._int64_feature(ele.input_mask_a)
             features["input_ids_b"] = about_tfrecord._int64_feature(ele.input_ids_b)
+            features["input_mask_b"] = about_tfrecord._int64_feature(ele.input_mask_b)
             features["label_id"] = about_tfrecord._int64_feature([ele.label_id])
             writer.write(about_tfrecord.serialize_example(features))
 
@@ -490,7 +498,11 @@ class SiameseProcessor(DataProcessor):
 
     @staticmethod
     def decode_record(self, record):
-        return {"input_ids_a": record[0], "input_ids_b": record[1], "label_id": [record[2]]}
+        return {"input_ids_a": record[0],
+                "input_mask_a": record[1],
+                "input_ids_b": record[2],
+                "input_mask_b": record[3],
+                "label_id": [record[4]]}
 
     def _convert_single_example(self, ex_index, example):
         label_map = {}
@@ -531,6 +543,7 @@ class SiameseProcessor(DataProcessor):
             tokens.append(token)
         tokens.append("[SEP]")
         input_ids_a = self.tokenizer.convert_tokens_to_ids(tokens)
+        input_mask_a = [1] * len(input_ids_a)
 
         tokens = []
         tokens.append("[CLS]")
@@ -540,6 +553,7 @@ class SiameseProcessor(DataProcessor):
             tokens.append("[SEP]")
 
         input_ids_b = self.tokenizer.convert_tokens_to_ids(tokens)
+        input_mask_b = [1] * len(input_ids_b)
 
         # The mask has 1 for real tokens and 0 for padding tokens. Only real
         # tokens are attended to.
@@ -547,9 +561,11 @@ class SiameseProcessor(DataProcessor):
         # Zero-pad up to the sequence length.
         while len(input_ids_a) < self.max_seq_length:
             input_ids_a.append(0)
+            input_mask_a.append(0)
 
         while len(input_ids_b) < self.max_seq_length:
             input_ids_b.append(0)
+            input_mask_b.append(0)
 
         assert len(input_ids_a) == self.max_seq_length
         assert len(input_ids_b) == self.max_seq_length
@@ -561,12 +577,16 @@ class SiameseProcessor(DataProcessor):
             tf.get_logger().info("tokens: %s" % " ".join(
                 [tokenization.printable_text(x) for x in tokens]))
             tf.get_logger().info("input_ids_a: %s" % " ".join([str(x) for x in input_ids_a]))
+            tf.get_logger().info("input_mask_a: %s" % " ".join([str(x) for x in input_mask_a]))
             tf.get_logger().info("input_ids_b: %s" % " ".join([str(x) for x in input_ids_b]))
+            tf.get_logger().info("input_mask_b: %s" % " ".join([str(x) for x in input_mask_b]))
             tf.get_logger().info("label: %s (id = %d)" % (example.label, label_id))
 
         feature = SiameseFeatures(
             input_ids_a=input_ids_a,
+            input_mask_a=input_mask_a,
             input_ids_b=input_ids_b,
+            input_mask_b=input_mask_b,
             label_id=label_id)
         return feature
 
@@ -578,7 +598,9 @@ class SiameseProcessor(DataProcessor):
 
         features = {
             "input_ids_a": create_int_feature(feature.input_ids_a),
+            "input_mask_a": create_int_feature(feature.input_mask_a),
             "input_ids_b": create_int_feature(feature.input_ids_b),
+            "input_mask_b": create_int_feature(feature.input_mask_b),
             "label_id": create_int_feature([feature.label_id])
 
         }
