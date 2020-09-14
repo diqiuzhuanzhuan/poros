@@ -15,3 +15,4 @@ poros/unilmv2/*data
 *.log
 .DS_Store
 */test_data/*
+*.zip
