@@ -14,7 +14,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.49",
+    version="0.0.51",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",
@@ -23,10 +23,11 @@ setuptools.setup(
     url="https://github.com/diqiuzhuanzhuan/poros",
     packages=setuptools.find_packages(),
     install_requires=[
-        "tensorflow",
+        "tensorflow>=2.2.0",
         "tensorflow-addons",
         "matplotlib",
         "seqeval",
+	"tf2crf",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
