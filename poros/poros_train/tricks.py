@@ -5,6 +5,7 @@ author: diqiuzhuanzhuan
 email: diqiuzhuanzhuan@gmail.com
 
 """
+import os
 import tensorflow as tf
 
 PS_OPS = [
@@ -35,3 +36,26 @@ def assign_to_device(device, ps_device):
             return device
 
     return _assign
+
+
+def get_strategy(name: str):
+    print("Tensorflow version " + tf.__version__)
+    if name.lower() == "tpu":
+        tpu = 'grpc://' + os.environ['COLAB_TPU_ADDR']
+
+        try:
+            tpu = tf.distribute.cluster_resolver.TPUClusterResolver(tpu)  # TPU detection
+            print('Running on TPU ', tpu.cluster_spec().as_dict()['worker'])
+        except ValueError:
+            raise BaseException(
+                'ERROR: Not connected to a TPU runtime; please see the previous cell in this notebook for instructions!')
+
+        tf.config.experimental_connect_to_cluster(tpu)
+        tf.tpu.experimental.initialize_tpu_system(tpu)
+        tpu_strategy = tf.distribute.experimental.TPUStrategy(tpu)
+        return tpu_strategy
+    else:
+        gpu_strategy = tf.distribute.MirroredStrategy()
+        return gpu_strategy
+
+

@@ -28,8 +28,8 @@ from absl import app
 
 class Flags(object):
 
-    def __init__(self, input_file, output_file, vocab_file, do_lower_case=True, do_whole_word_mask=False, max_seq_length=128,
-                 max_predictions_per_seq=20, random_seed=12345, dupe_factor=10, masked_lm_prob=0.15, short_seq_prob=0.1):
+    def __init__(self, input_file, output_file, vocab_file, do_lower_case=False, do_whole_word_mask=True, max_seq_length=512,
+                 max_predictions_per_seq=64, random_seed=12345, dupe_factor=10, masked_lm_prob=0.15, short_seq_prob=0.1):
         self.input_file = input_file
         self.output_file = output_file
         self.vocab_file = vocab_file

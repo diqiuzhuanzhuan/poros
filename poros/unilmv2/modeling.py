@@ -307,6 +307,7 @@ class NextSentenceLayer(tf.keras.layers.Layer):
 
 
 if __name__ == "__main__":
+    tf.debugging.enable_check_numerics()
     ul = Unilmv2Layer(config=Unilmv2Config(vocab_size=100))
     input_ids = tf.random.uniform(shape=[3, 20], dtype=tf.int32, maxval=100)
     input_mask = tf.ones(shape=[3, 20])
