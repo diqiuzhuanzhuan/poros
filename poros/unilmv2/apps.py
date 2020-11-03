@@ -37,7 +37,7 @@ def pretrain():
     unilmv2_model = Unilmv2Model(config=unilmv2_config, is_training=True)
     epochs = 2000
     steps_per_epoch = 15
-    optimizer = optimization.create_optimizer(init_lr=6e-4, num_train_steps=epochs * steps_per_epoch, num_warmup_steps=1500)
+    optimizer = optimization.create_optimizer(init_lr=1e-5, num_train_steps=epochs * steps_per_epoch, num_warmup_steps=1500)
     unilmv2_model.compile(optimizer=optimizer)
 
     checkpoint_filepath = '/tmp/checkpoint'
@@ -74,7 +74,7 @@ class Unilmv2Model(tf.keras.Model):
         self.masked_lm_loss = tf.keras.metrics.Mean(name="masked_lm_loss")
         self.pseudo_masked_lm_loss = tf.keras.metrics.Mean(name="pseudo_masked_lm_loss")
 
-    def call(self, inputs):
+    def call(self, inputs, training=False):
         self.unilmv2_layer(inputs)
         masked_lm_input = self.unilmv2_layer.get_sequence_output()
 
@@ -93,7 +93,8 @@ class Unilmv2Model(tf.keras.Model):
             inputs["pseudo_masked_lm_ids"],
             inputs["masked_lm_weights"]
         )
-        total_loss = masked_lm_loss + pseudo_masked_lm_loss
+        total_loss = (masked_lm_loss + pseudo_masked_lm_loss)/2.0
+
         self.add_loss(total_loss)
 
         masked_lm_predictions = tf.argmax(masked_lm_log_probs, axis=-1, output_type=tf.int32)

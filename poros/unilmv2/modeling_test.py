@@ -119,13 +119,15 @@ class ModelingTest(unittest.TestCase):
             value=[
                 [9, 127, 13, 0, 0, 0],
                 [8, 49, 88, 0, 0, 0]
-            ]
+            ],
+            dtype=tf.int64
         )
         label_ids = tf.constant(
             value=[
                 [1, 5, 9, 0, 0, 0],
                 [3, 7, 12, 0, 0, 0]
-            ]
+            ],
+            dtype=tf.int64
         )
         label_weight = tf.constant(
             value=[

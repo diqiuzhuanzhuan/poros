@@ -91,10 +91,10 @@ class TestRunPretraining(unittest.TestCase):
         bert_pretrain_model = run_pretraining.BertPretrainModel(
             config=bert_config,
             is_training=True,
-            #init_checkpoint="../bert_model/data/chinese_L-12_H-768_A-12/bert_model.ckpt"
+            init_checkpoint=None,
         )
 
-        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
+        bert_pretrain_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.00001))
         d = tf.data.TFRecordDataset("./output")
         # Since we evaluate for a fixed number of steps we don't want to encounter
         # out-of-range exceptions.
@@ -123,10 +123,7 @@ class TestRunPretraining(unittest.TestCase):
                 drop_remainder=True)).repeat()
         bert_pretrain_model.fit(d, epochs=10, steps_per_epoch=10, callbacks=[])
 
-        import time
-        t1 = time.time()
         output = bert_pretrain_model(features)
-        print(time.time()-t1)
         print(output)
 
     def test_siamese_bert_model(self):

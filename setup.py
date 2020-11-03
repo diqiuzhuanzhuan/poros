@@ -15,7 +15,7 @@ with codecs.open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.51",
+    version="0.0.52",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",

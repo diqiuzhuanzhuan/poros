@@ -199,7 +199,8 @@ class BertLayer(tf.keras.layers.Layer):
              input_mask=None,
              token_type_ids=None,
              scope="bert",
-             use_one_hot_embeddings=False):
+             use_one_hot_embeddings=False,
+             training=False):
         """
         Args:
             input_ids: int32 Tensor of shape [batch_size, seq_length].
@@ -231,7 +232,8 @@ class BertLayer(tf.keras.layers.Layer):
                 self.embedding_output = self.embedding_postprocesser_layer(
                     self.embedding_output,
                     token_type_ids,
-                    self.config.hidden_dropout_prob
+                    self.config.hidden_dropout_prob,
+                    training=training
                 )
             with tf.name_scope("encoder"):
                 # This converts a 2D mask of shape [batch_size, seq_length] to a 3D
@@ -243,7 +245,7 @@ class BertLayer(tf.keras.layers.Layer):
                 # Run the stacked transformer.
                 # `sequence_output` shape = [batch_size, seq_length, hidden_size].
 
-                self.all_encoder_layers = self.transformer_layer(self.embedding_output, attention_mask)
+                self.all_encoder_layers = self.transformer_layer(self.embedding_output, attention_mask, training=training)
 
             self.sequence_output = self.all_encoder_layers[-1]
             # The "pooler" converts the encoded sequence tensor of shape
@@ -477,7 +479,7 @@ class EmbeddingPostprocessorLayer(tf.keras.layers.Layer):
             self.layer_normalization = tf.keras.layers.LayerNormalization(epsilon=0.00001)
             self.layer_normalization.build(input_shape=[None, None, self.embedding_size])
 
-    def call(self, input_tensor, token_type_ids, dropout_prob=0.1):
+    def call(self, input_tensor, token_type_ids, dropout_prob=0.1, training=False):
         input_shape = get_shape_list(input_tensor, expected_rank=3)
         batch_size = input_shape[0]
         seq_length = input_shape[1]
@@ -518,7 +520,8 @@ class EmbeddingPostprocessorLayer(tf.keras.layers.Layer):
                 output += position_embeddings
 
         output = self.layer_normalization(output)
-        output = dropout(output, dropout_prob)
+        if training:
+            output = dropout(output, dropout_prob)
 
         return output
 
@@ -718,7 +721,7 @@ class AttentionLayer(tf.keras.layers.Layer):
         self.size_per_head = size_per_head
         self.query_act = query_act
         self.key_act = key_act
-        self.attention_probs_dropout_prob = attention_probs_dropout_prob
+        #self.attention_probs_dropout_prob = attention_probs_dropout_prob
         self.initializer_range = initializer_range
         self.do_return_2d_tensor = do_return_2d_tensor
         self.wq = tf.keras.layers.Dense(self.num_attention_heads * self.size_per_head,
@@ -904,7 +907,7 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
         """
 
-    def call(self, input_tensor, attention_mask):
+    def call(self, input_tensor, attention_mask, training=False):
         #input_tensor = features["input_tensor"]
         #attention_mask = features["attention_mask"]
         input_shape = get_shape_list(input_tensor, expected_rank=3)
@@ -954,18 +957,22 @@ class TransformerLayer(tf.keras.layers.Layer):
                 # Run a linear projection of `hidden_size` then add a residual
                 # with `layer_input`.
             attention_output = attention_output_layer(attention_output)
-            attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            if training:
+                attention_output = dropout(attention_output, self.hidden_dropout_prob)
             attention_output = attention_output_layer_norm(attention_output + layer_input)
-            attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            if training:
+                attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             # The activation is only applied to the "intermediate" hidden layer.
             intermediate_output = intermediate_output(attention_output)
 
             # Down-project back to `hidden_size` then add the residual.
             layer_output = output(intermediate_output)
-            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            if training:
+                layer_output = dropout(layer_output, self.hidden_dropout_prob)
             layer_output = output_layer_norm(layer_output + attention_output)
-            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            if training:
+                layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
             all_layer_outputs.append(layer_output)
 

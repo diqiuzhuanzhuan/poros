@@ -465,7 +465,7 @@ class TransformerLayer(tf.keras.layers.Layer):
                         layer = RezeroLayer()
                         self.dense_output_rezero_layers.append(layer)
 
-    def call(self, inputs, attention_mask):
+    def call(self, inputs, attention_mask, training=False):
         input_tensor = inputs
         input_shape = about_tensor.get_shape(input_tensor, expected_rank=3)
         input_width = input_shape[2]
@@ -511,21 +511,25 @@ class TransformerLayer(tf.keras.layers.Layer):
                 # Run a linear projection of `hidden_size` then add a residual
                 # with `layer_input`.
             attention_output = attention_output_layer(attention_output)
-            attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            if training:
+                attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             #attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
             attention_output = layer_input + attention_outputs_layer_norm(attention_output)
             #attention_output = layer_input + attention_output
-            attention_output = dropout(attention_output, self.hidden_dropout_prob)
+            if training:
+                attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
             # The activation is only applied to the "intermediate" hidden layer.
             intermediate_output = intermediate_output(attention_output)
 
             # Down-project back to `hidden_size` then add the residual.
             layer_output = output(intermediate_output)
-            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            if training:
+                layer_output = dropout(layer_output, self.hidden_dropout_prob)
             layer_output = attention_output + dense_output_rezero_layer(layer_output)
-            layer_output = dropout(layer_output, self.hidden_dropout_prob)
+            if training:
+                layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
             all_layer_outputs.append(layer_output)
 

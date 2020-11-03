@@ -55,7 +55,7 @@ class Unilmv2Layer(tf.keras.layers.Layer):
                         self.config.initializer_range))
                 self.pooler_layer.build(input_shape=[None, config.hidden_size])
 
-    def call(self, inputs, **kwargs):
+    def call(self, inputs, training=False, **kwargs):
         input_ids = inputs["input_ids"]
         if "attention_mask" in inputs:
             attention_mask = inputs["attention_mask"]
@@ -69,7 +69,7 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "position_ids": output_tokens_positions,
             "segment_ids": segment_ids
         })
-        self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask)
+        self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask, training=training)
         #self.all_encoder_layers = transformer_model(self.embedding_output, attention_mask=None, do_return_all_layers=True)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)

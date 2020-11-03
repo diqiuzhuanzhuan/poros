@@ -182,7 +182,7 @@ class BertPretrainModel(tf.keras.Model):
         tvars = self.trainable_variables
         restore.init_from_checkpoint(self.init_checkpoint, tvars)
 
-    def call(self, features):
+    def call(self, features, training=False):
         input_ids = features["input_ids"]
         input_mask = features["input_mask"]
         segment_ids = features["segment_ids"]
@@ -195,7 +195,8 @@ class BertPretrainModel(tf.keras.Model):
             input_mask,
             segment_ids,
             "bert",
-            self.use_one_hot_embeddings
+            self.use_one_hot_embeddings,
+            training=training
         )
         masked_lm_input = self.bert_layer.get_sequence_output()
         masked_lm_loss, masked_lm_example_loss, masked_lm_log_probs = \
