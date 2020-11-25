@@ -68,7 +68,13 @@ class NumberAdapter(object):
         if not isinstance(text, str):
             raise ValueError("{} is not str".format(type(text)))
         t = text.replace(' ', '')
-        return cls._convert(t)
+        new_t = []
+        for i, _ in enumerate(t):
+            if _ in cls._data and 1 < i < (len(t) - 1):
+                if cls._data[_] == 10 and cls._data[t[i-1]] > 0 and cls._data[t[i+1]] < 10:
+                    continue
+            new_t.append(_)
+        return cls._convert("".join(new_t))
 
     @classmethod
     def _convert(cls, text):

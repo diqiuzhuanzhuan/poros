@@ -113,7 +113,6 @@ import tensorflow as tf
 [1]
 
 ```
-    
   
 # poros_chars
 Provide a list of small functions
@@ -127,3 +126,5 @@ from poros.poros_chars import chinese_to_arabic
 
 ```
 
+# Thanks
+PyCharm
