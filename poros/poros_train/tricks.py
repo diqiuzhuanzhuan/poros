@@ -59,3 +59,17 @@ def get_strategy(name: str):
         return gpu_strategy
 
 
+def mount_google_drive():
+    try:
+        from google.colab import drive
+        drive.mount('/content/drive')
+    except Exception as e:
+        print("not in googole colab environment!")
+
+def google_colab_authenticate_user():
+    try:
+        from google.colab import auth
+        auth.authenticate_user()
+    except Exception as e:
+        print("not in googole colab environment!")
+
