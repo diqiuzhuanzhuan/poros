@@ -42,7 +42,7 @@ class ModelingTest(unittest.TestCase):
         inputs = {
             "input_ids": input_ids,
             "position_ids": position_ids,
-            "token_type_ids": token_type_ids
+            "segment_ids": token_type_ids
         }
         output, embedding_table = input_embedding_layer(inputs=inputs)
         expected_shape = [
@@ -74,9 +74,14 @@ class ModelingTest(unittest.TestCase):
                 [0, 1, 1, 1, 2, 3, 4, 3, 4, 3, 4, 5]
             ]
         )
+        features["segment_ids"] = tf.constant(
+            value=[
+               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            ]
+        )
         batch_size = features["input_ids"].get_shape().as_list()[0]
         output = unilmv2_layer(features)
-        self.assertListEqual(output.get_shape().as_list(), [batch_size, self.config.hidden_size])
+        self.assertListEqual(output.get_shape().as_list(), [batch_size, self.config.num_attention_heads, self.config.hidden_size])
         sequence_output = unilmv2_layer.get_sequence_output()
         self.assertListEqual(sequence_output.get_shape().as_list(), [batch_size, 12, self.config.hidden_size])
 

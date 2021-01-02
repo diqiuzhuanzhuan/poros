@@ -14,6 +14,12 @@ import numpy as np
 
 class SomeLayerTest(tf.test.TestCase):
 
+    def test_dropout(self):
+        input_tensor = tf.random.truncated_normal(shape=[1, 9], stddev=0.02)
+        input_tensor = tf.reshape(input_tensor, [-1, 3])
+        print(input_tensor.get_shape().rank)
+        some_layer.dropout(input_tensor, 0.1)
+
     def test_dot_product_attention(self):
 
         query = tf.Variable(initial_value=[

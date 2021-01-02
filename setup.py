@@ -15,7 +15,7 @@ with codecs.open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.55",
+    version="0.0.60",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",
@@ -27,7 +27,6 @@ setuptools.setup(
         "tensorflow>=2.2.0",
         "tensorflow-addons",
         "matplotlib",
-        "seqeval",
         "tf2crf",
     ],
     classifiers=[

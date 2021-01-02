@@ -173,6 +173,7 @@ class BertLayer(tf.keras.layers.Layer):
                     token_type_vocab_size=self.config.type_vocab_size,
                 )
             with tf.name_scope(name="encoder"):
+                #from poros_train.some_layer import TransformerLayer
                 self.transformer_layer = TransformerLayer(
                     hidden_size=self.config.hidden_size,
                     num_hidden_layers=self.config.num_hidden_layers,
@@ -898,14 +899,13 @@ class TransformerLayer(tf.keras.layers.Layer):
                         layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
                         layer.build(input_shape=[None, None, self.hidden_size])
                         self.outputs_layer_norm.append(layer)
-        """
-        self.attention_layers = tf.stack(self.attention_layers)
-        self.attention_outputs = tf.stack(self.attention_outputs)
-        self.attention_outputs_layer_norm = tf.stack(self.attention_outputs_layer_norm)
-        self.intermediate_outputs = tf.stack(self.intermediate_outputs)
-        self.outputs = tf.stack(self.outputs)
-        self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
-        """
+
+        #self.attention_layers = tf.stack(self.attention_layers)
+        #self.attention_outputs = tf.stack(self.attention_outputs)
+        #self.attention_outputs_layer_norm = tf.stack(self.attention_outputs_layer_norm)
+        #self.intermediate_outputs = tf.stack(self.intermediate_outputs)
+        #self.outputs = tf.stack(self.outputs)
+        #self.outputs_layer_norm = tf.stack(self.outputs_layer_norm)
 
     def call(self, input_tensor, attention_mask, training=False):
         #input_tensor = features["input_tensor"]
@@ -985,7 +985,6 @@ class TransformerLayer(tf.keras.layers.Layer):
         else:
             final_output = reshape_from_matrix(prev_output, input_shape)
             return final_output
-
 
 
 def get_shape_list(tensor, expected_rank=None, name=None):

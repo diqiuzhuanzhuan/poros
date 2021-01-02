@@ -592,10 +592,14 @@ if __name__ == "__main__":
     output_file = "./pretraining_data"
     vocab_file = "./test_data/vocab.txt"
     tokenizer = tokenization.FullTokenizer(vocab_file=vocab_file, do_lower_case=True)
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=1)
     if not os.path.exists(output_file):
         ptdm.create_pretraining_data(input_file, output_file)
     dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=1)
+    i = 0
     for data in dataset:
         ids = data["input_ids"].numpy()
         print(tokenizer.convert_ids_to_tokens(ids[0]))
+        i += 1
+        print(i)
+

@@ -12,8 +12,8 @@ from poros.poros_train.some_layer import (
     TokenTypeEmbeddingLayer,
     EmbeddingLookupLayer,
     create_initializer,
-    TransformerLayer
 )
+from poros.bert.modeling import TransformerLayer
 from poros.poros_dataset import about_tensor
 from poros.poros_train import acitvation_function
 import copy
@@ -39,7 +39,7 @@ class Unilmv2Layer(tf.keras.layers.Layer):
                     num_hidden_layers=self.config.num_hidden_layers,
                     num_attention_heads=self.config.num_attention_heads,
                     intermediate_size=self.config.intermediate_size,
-                    intermediate_act_fn=self.config.hidden_act,
+                    intermediate_act_fn=acitvation_function.get_activation(self.config.hidden_act),
                     hidden_dropout_prob=self.config.hidden_dropout_prob,
                     attention_probs_dropout_prob=self.config.hidden_dropout_prob,
                     initializer_range=self.config.initializer_range,
@@ -157,7 +157,7 @@ def gather_indexes(sequence_tensor, positions):
     width = sequence_shape[2]
     flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * positions_shape[1], [-1, 1])
-    flat_offsets = tf.cast(flat_offsets, dtype=tf.int64)
+    flat_offsets = tf.cast(flat_offsets, dtype=positions.dtype)
     flat_positions = tf.reshape(positions + flat_offsets, [-1])
     flat_sequence_tensor = tf.reshape(sequence_tensor,
                                       [batch_size * seq_length, width])

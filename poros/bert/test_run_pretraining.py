@@ -121,7 +121,7 @@ class TestRunPretraining(unittest.TestCase):
                 lambda record: run_pretraining._decode_record(record, name_to_features),
                 batch_size=8,
                 drop_remainder=True)).repeat()
-        bert_pretrain_model.fit(d, epochs=10, steps_per_epoch=10, callbacks=[])
+        bert_pretrain_model.fit(d, epochs=500, steps_per_epoch=10, callbacks=[])
 
         output = bert_pretrain_model(features)
         print(output)

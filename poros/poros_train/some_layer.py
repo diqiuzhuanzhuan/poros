@@ -513,7 +513,8 @@ class TransformerLayer(tf.keras.layers.Layer):
             attention_output = attention_output_layer(attention_output)
             if training:
                 attention_output = dropout(attention_output, self.hidden_dropout_prob)
-            attention_output = attention_outputs_layer_norm(attention_output + layer_input)
+
+            attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
             if training:
                 attention_output = dropout(attention_output, self.hidden_dropout_prob)
 

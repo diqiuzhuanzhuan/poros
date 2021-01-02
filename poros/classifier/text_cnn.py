@@ -5,6 +5,7 @@
 import tensorflow as tf
 from poros.poros_train import some_layer
 from poros.poros_train import optimization
+from poros.poros_dataset import about_tensor
 
 
 class TextCNN(tf.keras.Model):
@@ -32,7 +33,7 @@ class TextCNN(tf.keras.Model):
         self.embedding_layer = some_layer.EmbeddingLookupLayer(vocab_size=self.vocab_size, embedding_size=self.embedding_size)
         self.filter_W = []
         self.filter_b = []
-        self.l2_loss = tf.constant(0.0)
+        self.l2_loss = 0
 
         self.pooled_outputs = []
         for i, filter_size in enumerate(self.filter_sizes):
@@ -52,7 +53,8 @@ class TextCNN(tf.keras.Model):
                 name="w"
             )
             self.output_b = tf.Variable(
-                initial_value=tf.constant(0.1, shape=[self.num_classes], name="b")
+                initial_value=tf.initializers.Constant(0.1)(shape=[self.num_classes]),
+                name="b"
             )
 
         with tf.name_scope("metrics"):
@@ -62,7 +64,9 @@ class TextCNN(tf.keras.Model):
 
         input_ids = inputs["input_ids"]
         input_y = inputs["input_y"]
-        input_y = tf.one_hot(input_y, depth=1)
+        print(input_y)
+        input_y = tf.one_hot(input_y, depth=self.num_classes)
+        print(input_y)
         embedding_output, _ = self.embedding_layer(input_ids)
         # now the dimension is [B, H, W], so we expand it to [B, H, W, C]
         expanded_embedding_output = tf.expand_dims(embedding_output, -1)
@@ -86,29 +90,29 @@ class TextCNN(tf.keras.Model):
             pooled_outputs.append(pooled)
         self.h_pool = tf.concat(pooled_outputs, 3)
         self.h_pool_flat = tf.reshape(self.h_pool, [-1, self.num_filters_total])
+        """
         with tf.name_scope("drop_out"):
             if training:
                 pool_out_drop = self.h_pool_flat
             else:
-                pool_out_drop = 0
+                pool_out_drop = 0.1
             h_drop = some_layer.dropout(self.h_pool_flat, pool_out_drop)
+        """
+        h_drop = self.h_pool_flat
 
-        with tf.name_scope("output"):
-            scores = tf.compat.v1.nn.xw_plus_b(h_drop, self.output_W, self.output_b, name="scores")
-            predictions = tf.argmax(scores, 1, name="predictions")
+        self.l2_loss = tf.nn.l2_loss(self.output_W)
+        self.l2_loss += tf.nn.l2_loss(self.output_b)
+        scores = tf.compat.v1.nn.xw_plus_b(h_drop, self.output_W, self.output_b, name="scores")
+        predictions = tf.argmax(scores, -1, name="predictions")
 
         # Calculate mean cross-entropy loss
-        with tf.name_scope("loss"):
-            self.l2_loss += tf.nn.l2_loss(self.output_W)
-            self.l2_loss += tf.nn.l2_loss(self.output_b)
-            losses = tf.nn.softmax_cross_entropy_with_logits(logits=scores, labels=input_y)
-            total_loss = tf.reduce_mean(losses) + self.l2_reg_lambda * self.l2_loss
-            self.add_loss(total_loss)
+        losses = tf.nn.softmax_cross_entropy_with_logits(logits=scores, labels=input_y)
+        total_loss = tf.reduce_mean(losses) + self.l2_reg_lambda * self.l2_loss
+        self.add_loss(total_loss)
 
-        with tf.name_scope("accuracy"):
-            accuracy = self.accuracy_metric(predictions, tf.argmax(input_y, 1))
-            if not self.build:
-                self.add_metric(accuracy)
+        accuracy = self.accuracy_metric(predictions, tf.argmax(input_y, -1))
+        if not self.build:
+            self.add_metric(accuracy)
         self.summary()
 
         return predictions
@@ -116,15 +120,19 @@ class TextCNN(tf.keras.Model):
 
 if __name__ == "__main__":
     import numpy as np
-    model = TextCNN(sequence_length=6, num_classes=2, vocab_size=100, embedding_size=128, filter_size=[2, 3, 4], num_filters=3, l2_reg_lambda=0.1)
+    model = TextCNN(sequence_length=6, num_classes=2, vocab_size=100, embedding_size=128, filter_size=[2, 3, 4],
+                    num_filters=3, l2_reg_lambda=0.1)
     inputs = {
         "input_ids": np.array([
             [1, 2, 3, 4, 5, 6],
-            [1, 3, 3, 4, 5, 6]
+            [1, 3, 3, 7, 5, 6]
         ]),
-        "input_y": [0, 0]
+        "input_y": np.array([0, 1])
     }
 
     print(model(inputs))
-    optimizer = optimization.create_optimizer(init_lr=1e-5, num_train_steps=2* 1, num_warmup_steps=1500)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
     model.compile(optimizer=optimizer)
+    data = tf.data.Dataset.from_tensor_slices(inputs)
+    data = data.repeat().batch(1, drop_remainder=True)
+    model.fit(data, epochs=100, steps_per_epoch=1)
