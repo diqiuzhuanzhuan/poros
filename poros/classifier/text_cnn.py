@@ -56,6 +56,8 @@ class TextCNN(tf.keras.Model):
                 initial_value=tf.initializers.Constant(0.1)(shape=[self.num_classes]),
                 name="b"
             )
+        with tf.name_scope("dropout"):
+            self.dropout_layer = tf.keras.layers.Dropout(rate=self.poll_out_drop)
 
         with tf.name_scope("metrics"):
             self.accuracy_metric = tf.keras.metrics.Accuracy()
@@ -90,15 +92,7 @@ class TextCNN(tf.keras.Model):
             pooled_outputs.append(pooled)
         self.h_pool = tf.concat(pooled_outputs, 3)
         self.h_pool_flat = tf.reshape(self.h_pool, [-1, self.num_filters_total])
-        """
-        with tf.name_scope("drop_out"):
-            if training:
-                pool_out_drop = self.h_pool_flat
-            else:
-                pool_out_drop = 0.1
-            h_drop = some_layer.dropout(self.h_pool_flat, pool_out_drop)
-        """
-        h_drop = self.h_pool_flat
+        h_drop = self.dropout_layer(self.h_pool_flat)
 
         self.l2_loss = tf.nn.l2_loss(self.output_W)
         self.l2_loss += tf.nn.l2_loss(self.output_b)
@@ -135,4 +129,4 @@ if __name__ == "__main__":
     model.compile(optimizer=optimizer)
     data = tf.data.Dataset.from_tensor_slices(inputs)
     data = data.repeat().batch(1, drop_remainder=True)
-    model.fit(data, epochs=100, steps_per_epoch=1)
+    model.fit(data, epochs=1000, steps_per_epoch=1)
