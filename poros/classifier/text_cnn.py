@@ -119,14 +119,17 @@ if __name__ == "__main__":
     inputs = {
         "input_ids": np.array([
             [1, 2, 3, 4, 5, 6],
-            [1, 3, 3, 7, 5, 6]
+            [1, 3, 3, 7, 5, 6],
+            [1, 6, 3, 7, 4, 6],
+            [1, 3, 5, 7, 5, 6],
+            [1, 3, 1, 7, 5, 6]
         ]),
-        "input_y": np.array([0, 1])
+        "input_y": np.array([0, 1, 0, 1, 0])
     }
 
     print(model(inputs))
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-4)
     model.compile(optimizer=optimizer)
     data = tf.data.Dataset.from_tensor_slices(inputs)
-    data = data.repeat().batch(1, drop_remainder=True)
+    data = data.repeat().batch(5, drop_remainder=True)
     model.fit(data, epochs=1000, steps_per_epoch=1)

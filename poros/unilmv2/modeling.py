@@ -12,8 +12,8 @@ from poros.poros_train.some_layer import (
     TokenTypeEmbeddingLayer,
     EmbeddingLookupLayer,
     create_initializer,
+    TransformerLayer
 )
-from poros.bert.modeling import TransformerLayer
 from poros.poros_dataset import about_tensor
 from poros.poros_train import acitvation_function
 import copy
@@ -70,11 +70,8 @@ class Unilmv2Layer(tf.keras.layers.Layer):
             "segment_ids": segment_ids
         })
         self.all_encoder_layers = self.transformer_layer(inputs=self.embedding_output, attention_mask=attention_mask, training=training)
-        #self.all_encoder_layers = transformer_model(self.embedding_output, attention_mask=None, do_return_all_layers=True)
         self.sequence_output = self.all_encoder_layers[-1]
         first_token_tensor = tf.squeeze(self.sequence_output[:, 0:1, :], axis=1)
-        #self.pooled_output = self.pooler_layer(first_token_tensor)
-        #return self.pooled_output
         return self.sequence_output
 
     def get_sequence_output(self):

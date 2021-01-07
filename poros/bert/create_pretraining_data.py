@@ -445,6 +445,8 @@ def main(_):
 
 if __name__ == "__main__":
     FLAGS.input_file = "./sample_text.txt"
-    FLAGS.output_file = "./output"
+    FLAGS.output_file = "pretrain.tfrecord"
     FLAGS.vocab_file = "../bert_model/test_data/vocab.txt"
+    FLAGS.max_seq_length = 128
+    FLAGS.max_predictions_per_seq = 20
     app.run(main=main, argv=None)
