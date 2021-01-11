@@ -461,6 +461,12 @@ class TransformerLayer(tf.keras.layers.Layer):
                             kernel_initializer=create_initializer(self.initializer_range))
                         layer.build(input_shape=[None, self.intermediate_size])
                         self.outputs.append(layer)
+
+                    with tf.name_scope("LayerNorm"):
+                        layer = tf.keras.layers.LayerNormalization(epsilon=0.00001)
+                        layer.build(input_shape=[None, None, self.hidden_size])
+                        self.outputs_layer_norm.append(layer)
+
                     with tf.name_scope("rezero"):
                         layer = RezeroLayer()
                         self.dense_output_rezero_layers.append(layer)
@@ -488,14 +494,16 @@ class TransformerLayer(tf.keras.layers.Layer):
         all_layer_outputs = []
 
         for (attention_layer, attention_output_layer, intermediate_output, output,
-             attention_outputs_rezero_layer, dense_output_rezero_layer,attention_outputs_layer_norm) \
+             attention_outputs_rezero_layer, dense_output_rezero_layer,attention_outputs_layer_norm,
+             outputs_layer_norm) \
                 in zip(self.attention_layers,
                        self.attention_outputs,
                        self.intermediate_outputs,
                        self.outputs,
                        self.attention_outputs_rezero_layers,
                        self.dense_output_rezero_layers,
-                       self.attention_outputs_layer_norm
+                       self.attention_outputs_layer_norm,
+                       self.outputs_layer_norm
                        ):
             layer_input = prev_output
             attention_heads = []
@@ -514,7 +522,7 @@ class TransformerLayer(tf.keras.layers.Layer):
             if training:
                 attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
-            attention_output = layer_input + attention_outputs_rezero_layer(attention_output)
+            attention_output = attention_outputs_layer_norm(layer_input+attention_output)
             if training:
                 attention_output = dropout(attention_output, self.hidden_dropout_prob)
 
@@ -525,7 +533,7 @@ class TransformerLayer(tf.keras.layers.Layer):
             layer_output = output(intermediate_output)
             if training:
                 layer_output = dropout(layer_output, self.hidden_dropout_prob)
-            layer_output = attention_output + dense_output_rezero_layer(layer_output)
+            layer_output = outputs_layer_norm(layer_output + attention_output)
             if training:
                 layer_output = dropout(layer_output, self.hidden_dropout_prob)
             prev_output = layer_output
@@ -671,7 +679,7 @@ class RezeroLayer(tf.keras.layers.Layer):
         tensor_shape.TensorShape(input_shape)
         shape = [tensor_shape.dimension_value(input_shape[-2]), tensor_shape.dimension_value(input_shape[-1])]
         self.alpha = self.add_weight(name="alpha",
-                        shape=shape,
+                        shape=[1],
                         initializer=tf.initializers.Zeros,
                         trainable=True)
         self.built = True
