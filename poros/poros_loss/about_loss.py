@@ -39,3 +39,5 @@ def focal_loss(prediction_tensor, target_tensor, weights=None, alpha=0.25, gamma
     per_entry_cross_ent = - alpha * (pos_p_sub ** gamma) * tf.log(tf.clip_by_value(sigmoid_p, 1e-8, 1.0)) \
                           - (1 - alpha) * (neg_p_sub ** gamma) * tf.log(tf.clip_by_value(1.0 - sigmoid_p, 1e-8, 1.0))
     return tf.reduce_sum(per_entry_cross_ent)
+
+

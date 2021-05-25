@@ -89,5 +89,12 @@ class SomeLayerTest(tf.test.TestCase):
                     self.assertEqual(matrix[i, j], j - i + k)
 
 
+    def test_mmoe_layer(self):
+        mmoe_layer = some_layer.MMoELayer(units=10, num_tasks=5, num_experts=15)
+        x = tf.random.truncated_normal(shape=[8, 10], mean=0, stddev=0.01)
+        y = mmoe_layer(x)
+        print(y)
+
+
 if __name__ == "__main__":
     tf.test.main()
