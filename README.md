@@ -106,7 +106,7 @@ from poros.bert_model.run_classifier import SimpleClassifierModel
 # poros_dataset
 some operations about tensor
 ```python
-from poros.poros_dataset import about_tensor
+from poros.poros_dataset impo``rt about_tensor
 import tensorflow as tf
 >>> A = tf.constant(value=[0])
 >>> print(about_tensor.get_shape(A))
