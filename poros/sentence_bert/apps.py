@@ -13,7 +13,6 @@ class TransparentLayer(tf.keras.layers.Layer):
         super(TransparentLayer, self).__init__(*args, **kwargs)
 
     def call(self, input_a, input_b, **kwargs):
-        tf.losses.cosine_similarity()
         input_a_l2 = tf.nn.l2_normalize(input_a, axis=-1)
         input_b_l2 = tf.nn.l2_normalize(input_b, axis=-1)
         return sum(input_a_l2 * input_b_l2)
@@ -72,33 +71,31 @@ class SentenceBert(tf.keras.Model):
             raise ValueError("don't support {}".format(loss_fn))
         self.loss_metric = tf.keras.metrics.Mean(name=loss_fn)
 
-    def call(self, input_a, input_b=None, label_ids=None):
-
-        if input_b:
-            output_a, output_b = self.siamese_layer(input_a, input_b)
+    def call(self, inputs, training):
+        # 如果是输入两个句子
+        if inputs.get('count', 1) == 2:
+            input_a = inputs['input_a']
+            input_b = inputs['input_b']
+            output_a = self.siamese_layer(input_a)
+            output_b = self.siamese_layer(input_b)
             outputs = self.output_layer(output_a, output_b)
-            print(outputs)
         else:
-            siamese_output = self.siamese_layer(input_a, None)
+            siamese_output = self.siamese_layer(inputs)
             outputs = self.output_layer(siamese_output)
 
-        if label_ids:
-            loss = self.loss_fn(y_true=label_ids, y_pred=outputs)
-            self.add_loss(loss)
-            loss_metric = self.loss_metric(loss)
-            self.add_metric(loss_metric)
-            return outputs, loss
-        return outputs, None
+        label_ids = inputs["label_ids"]
+        loss = self.loss_fn(y_true=label_ids, y_pred=outputs)
+        self.add_loss(loss)
+        loss_metric = self.loss_metric(loss)
+        self.add_metric(loss_metric)
+        return outputs, loss
 
 
 if __name__ == "__main__":
-    sbm = SentenceBert()
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    inputs_a = tokenizer(["Hello, my dog is gone, can you help me to find it?"], return_tensors='tf')
-    inputs_b = tokenizer("Hello, my cat is gone, can you help me to find it?", return_tensors='tf')
-    print(inputs_a)
-    outputs = sbm(inputs_a, inputs_b)
-    print(outputs)
+    from poros.sentence_bert.dataman import SnliDataMan
+    snli_dataman = SnliDataMan()
+    data = snli_dataman.batch(data_type='train', batch_size=32)
     sbm = SentenceBert(loss_fn='triple_loss')
-    outputs = sbm(tf.stack([inputs_a, inputs_a, inputs_a], axis=-1), None, [0, 0, 0])
-    print(outputs)
+    optimazer = tf.keras.optimizers.Adam(learning_rate=1e-5)
+    sbm.compile(optimizer=optimazer)
+    sbm.fit(data, epochs=1, steps_per_epoch=20)

@@ -37,33 +37,31 @@ class SiameseLayer(tf.keras.layers.Layer):
     def get_config(self):
         return self.bert_config
 
-    def call(self, inputs_a, inputs_b=None):
+    def call(self, inputs_a):
         """
 
         :param inputs_a:
-        :param inputs_b:
         :return:
         """
-        outputs_a = self.bert_model(**inputs_a)
+        outputs_a = self.bert_model(inputs_a)
         # pool_inputs_a: [batch, seq_length, hidden]
         pool_inputs_a = outputs_a["last_hidden_state"]
         pool_inputs_a = tf.expand_dims(pool_inputs_a, 3)
         pool_outputs_a = self.pool_layer(pool_inputs_a)
         pool_outputs_a = tf.reshape(pool_outputs_a, [-1, self.bert_config["hidden_size"]])
-        if inputs_b:
-            outputs_b = self.bert_model(**inputs_b)
-            pool_inputs_b = outputs_b["last_hidden_state"]
-            pool_inputs_b = tf.expand_dims(pool_inputs_b, 3)
-            pool_outputs_b = self.pool_layer(pool_inputs_b)
-            pool_outputs_b = tf.reshape(pool_outputs_b, [-1, self.bert_config["hidden_size"]])
-            return pool_outputs_a, pool_outputs_b
         return pool_outputs_a
 
 
 if __name__ == "__main__":
+    from poros.sentence_bert.dataman import SnliDataMan
     sbl = SiameseLayer(pool_method='avg')
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    inputs_a = tokenizer.tokenize("Hello, my dog is gone, can you help me to find it?", return_tensors='tf')
+    snli_data_man = SnliDataMan()
+    t = snli_data_man.gen(data_type='train')
+    for ele in t:
+        print(ele[0])
+        sbl(ele[0])
+    inputs_a = tokenizer("Hello, my dog is gone, can you help me to find it?", return_tensors='tf')
     inputs_b = tokenizer("Hello, my cat is gone, can you help me to find it?", return_tensors='tf')
     print(inputs_a)
     outputs = sbl(inputs_a, inputs_b)

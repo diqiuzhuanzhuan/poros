@@ -39,23 +39,32 @@ class SnliDataMan(object):
                 input_a["input_ids"], input_b["input_ids"]
             ) + self.bert_tokenizer.convert_tokens_to_ids(['[PAD]']) * (self.bert_tokenizer.model_max_length - length)
             inputs["attention_mask"] = [1] * length + [0] * (self.bert_tokenizer.model_max_length - length)
-            yield inputs, ele['label']
+            inputs["label_ids"] = ele['label']
+            yield inputs, {}
 
-    def batch(self, data_type='train', batch_size=32):
+    def batch(self, data_type='train', batch_size=32, repeat=None, shuffle=1000):
         data = functools.partial(self.gen, data_type)
         tf_data = tf.data.Dataset.from_generator(data, output_types=(
             {
                 'token_type_ids': tf.int32,
                 'input_ids': tf.int32,
                 'attention_mask': tf.int32,
+                'label_ids': tf.int32
             },
-            tf.int32
+            {}), output_shapes=(
+            {
+                'token_type_ids': tf.TensorShape((self.bert_tokenizer.model_max_length,)),
+                'input_ids': tf.TensorShape((self.bert_tokenizer.model_max_length,)),
+                'attention_mask': tf.TensorShape((self.bert_tokenizer.model_max_length,)),
+                'label_ids': tf.TensorShape(())
+            },
+            {},
         ))
-        tf_data = tf_data.batch(batch_size=batch_size)
+        tf_data = tf_data.batch(batch_size=batch_size).repeat(repeat).shuffle(shuffle)
         return tf_data
 
 
 if __name__ == "__main__":
     snli_dataman = SnliDataMan()
     for i in snli_dataman.batch(data_type='train', batch_size=32):
-        print(i)
+        print(i[0]['input_ids'].shape)
