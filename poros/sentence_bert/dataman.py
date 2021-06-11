@@ -39,7 +39,7 @@ class SnliDataMan(object):
                 input_a["input_ids"], input_b["input_ids"]
             ) + self.bert_tokenizer.convert_tokens_to_ids(['[PAD]']) * (self.bert_tokenizer.model_max_length - length)
             inputs["attention_mask"] = [1] * length + [0] * (self.bert_tokenizer.model_max_length - length)
-            inputs["label_ids"] = ele['label']
+            inputs["label_ids"] = ele.get('label', 0)
             yield inputs, {}
 
     def batch(self, data_type='train', batch_size=32, repeat=None, shuffle=1000):

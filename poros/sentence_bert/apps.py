@@ -83,12 +83,14 @@ class SentenceBert(tf.keras.Model):
             siamese_output = self.siamese_layer(inputs)
             outputs = self.output_layer(siamese_output)
 
-        label_ids = inputs["label_ids"]
-        loss = self.loss_fn(y_true=label_ids, y_pred=outputs)
-        self.add_loss(loss)
-        loss_metric = self.loss_metric(loss)
-        self.add_metric(loss_metric)
-        return outputs, loss
+        if training:
+            label_ids = inputs["label_ids"]
+            loss = self.loss_fn(y_true=label_ids, y_pred=outputs)
+            self.add_loss(loss)
+            loss_metric = self.loss_metric(loss)
+            self.add_metric(loss_metric)
+            return outputs, loss
+        return outputs
 
 
 if __name__ == "__main__":
