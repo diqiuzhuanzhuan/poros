@@ -28,7 +28,6 @@ class DistanceLayer(tf.keras.layers.Layer):
     def build(self, input_shape):
         if len(input_shape) != 2:
             raise ValueError("input shape must be a tuple of TensorShape")
-        print(input_shape)
         self.weight = self.add_weight(shape=(input_shape[-1]*3, self.units),
                                       initializer='random_normal',
                                       trainable=True)
@@ -73,7 +72,7 @@ class SentenceBert(tf.keras.Model):
 
     def call(self, inputs, training):
         # 如果是输入两个句子
-        if inputs.get('count', 1) == 2:
+        if inputs.get('input_a', None):
             input_a = inputs['input_a']
             input_b = inputs['input_b']
             output_a = self.siamese_layer(input_a)
