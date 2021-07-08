@@ -8,6 +8,7 @@ from sentence_bert.dataman import SnliDataMan
 
 class SnliDataManTest(unittest.TestCase):
 
+    @classmethod
     def setUpClass(cls) -> None:
         cls.snli_dataman = SnliDataMan()
 

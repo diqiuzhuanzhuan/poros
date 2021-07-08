@@ -206,7 +206,8 @@ class MaskLmLayer(tf.keras.layers.Layer):
         # tensor has a value of 1.0 for every real prediction and 0.0 for the
         # padding predictions.
         # per_example_loss tensor shape is `[batch_size * seq_length]`
-        per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+        #per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+        per_example_loss = tf.nn.softmax_cross_entropy_with_logits(labels=one_hot_labels, logits=logits)
         numerator = tf.reduce_sum(label_weights * per_example_loss)
         denominator = tf.reduce_sum(label_weights) + 1e-5
         # loss tensor shape is `[]`
@@ -261,7 +262,9 @@ class PseudoMaskLmLayer(tf.keras.layers.Layer):
         # tensor has a value of 1.0 for every real prediction and 0.0 for the
         # padding predictions.
         # per_example_loss tensor shape is `[batch_size * seq_length]`
-        per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+        #per_example_loss = -tf.reduce_sum(log_probs * one_hot_labels, axis=[-1])
+        #numerator = tf.reduce_sum(label_weights * per_example_loss)
+        per_example_loss = tf.nn.softmax_cross_entropy_with_logits(labels=one_hot_labels, logits=logits)
         numerator = tf.reduce_sum(label_weights * per_example_loss)
         denominator = tf.reduce_sum(label_weights) + 1e-5
         # loss tensor shape is `[]`

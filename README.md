@@ -103,10 +103,24 @@ from poros.bert_model.run_classifier import SimpleClassifierModel
     )
 ````
 
+# sentence bert
+```python
+from poros.sentence_bert.apps import SentenceBert
+from poros.sentence_bert.dataman import SnliDataMan
+import tensorflow as tf
+>>> snli_dataman = SnliDataMan()
+>>> data = snli_dataman.batch(data_type='train', batch_size=32)
+>>> sbm = SentenceBert(loss_fn='triple_loss')
+>>> optimazer = tf.keras.optimizers.Adam(learning_rate=1e-5)
+>>> sbm.compile(optimizer=optimazer)
+>>> sbm.fit(data, epochs=1, steps_per_epoch=20)
+
+```
+
 # poros_dataset
 some operations about tensor
 ```python
-from poros.poros_dataset impo``rt about_tensor
+from poros.poros_dataset import about_tensor
 import tensorflow as tf
 >>> A = tf.constant(value=[0])
 >>> print(about_tensor.get_shape(A))

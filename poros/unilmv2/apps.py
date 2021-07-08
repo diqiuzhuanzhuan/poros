@@ -20,15 +20,15 @@ from poros.unilmv2 import (
 
 def pretrain():
     vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_data", "vocab.txt")
-    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=1, random_seed=100)
+    ptdm = PreTrainingDataMan(vocab_file=vocab_file, max_seq_length=128, max_predictions_per_seq=15, random_seed=100)
     input_file = "../bert/sample_text.txt"
-    output_file = "./pretraining_data"
+    output_file = "./test_data/pretraining_data"
     if not os.path.exists(output_file):
         ptdm.create_pretraining_data(input_file, output_file)
     eval_output_file = "./eval_pretraining_data"
     if not os.path.exists(eval_output_file):
         ptdm.create_pretraining_data(input_file, eval_output_file)
-    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=True, batch_size=8)
+    dataset = ptdm.read_data_from_tfrecord(output_file, is_training=False, batch_size=8)
 
     dataset = dataset.repeat()
     eval_dataset = ptdm.read_data_from_tfrecord(eval_output_file, is_training=False, batch_size=8)
