@@ -6,7 +6,7 @@ email: diqiuzhuanzhuan@gmail.com
 
 """
 import tensorflow as tf
-
+import torch
 from tensorflow.python.ops import array_ops
 
 
@@ -41,3 +41,30 @@ def focal_loss(prediction_tensor, target_tensor, weights=None, alpha=0.25, gamma
     return tf.reduce_sum(per_entry_cross_ent)
 
 
+class GravityLoss(torch.nn.modules.loss._Loss):
+
+    __constants__ = ['reduction']
+
+    def __init__(self, size_average=None, reduce=None, reduction: str = 'mean') -> None:
+        super(GravityLoss, self).__init__(size_average, reduce, reduction)
+
+    def forward(self, input_u: torch.Tensor, input_v: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """
+        :param input_v:
+        :param input_u:
+        :param target:
+        :return:
+        """
+        if torch.Size([input_u.shape[0], input_v.shape[0]]) != target.size():
+            raise ValueError(
+                "Using a target size ({}) that is different to the input size ({}) is deprecated. "
+                "Please ensure they have the same size.".format(target.size(), [input_u.shape[0] * input_v.shape[0]])
+            )
+
+        if self.reduction == 'mean':
+            m = input_u.shape[0]
+            n = input_v.shape[0]
+        else:
+            m = n = 1
+        loss = 1.0 / (m*n) * torch.matrix_power(torch.matmul(input_u, input_v.t()), 2)
+        return loss
