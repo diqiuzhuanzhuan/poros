@@ -319,6 +319,7 @@ class CoNLLReader(Dataset):
 
 
 if __name__ == "__main__":
+    from poros.ner.reader_utils import get_entity_vocab, wnut_iob
     tokenizer = LukeTokenizer.from_pretrained("studio-ousia/luke-base")
     entity_vocab = copy.deepcopy(tokenizer.entity_vocab)
     wiki_file = "./data/wiki_def/wiki.pkl.zip"
