@@ -10,5 +10,3 @@ name = "poros"
 from poros import poros_chars
 from poros import poros_dataset
 from poros import poros_loss
-from poros import poros_train
-
