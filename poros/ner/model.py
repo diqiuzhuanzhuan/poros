@@ -7,7 +7,6 @@ import os
 import pytorch_lightning.core.lightning as pl
 from torch.nn import CrossEntropyLoss
 import torch
-import torch.nn.functional as F
 import numpy as np
 from allennlp.modules import ConditionalRandomField
 from allennlp.modules.conditional_random_field import allowed_transitions
