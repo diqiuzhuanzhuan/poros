@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # author: Feynman
 # email: diqiuzhuanzhuan@gmail.com
+
 from cProfile import label
 from collections import defaultdict
 from turtle import shape
@@ -12,11 +13,11 @@ import copy
 import ahocorasick
 from intervaltree import IntervalTree, Interval
 from .reader_utils import get_ner_reader, extract_spans, _assign_ner_tags
-import nltk
 import os
 import itertools
 import numpy as np
 import logging
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
@@ -332,7 +333,3 @@ if __name__ == "__main__":
     for batch in conll_reader:
         pass
         #print(batch)
-        
-
-            
-    
