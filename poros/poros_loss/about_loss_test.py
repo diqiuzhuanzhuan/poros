@@ -16,7 +16,7 @@ class ModelingTest(unittest.TestCase):
         input_b = torch.tensor([[1.0, 1]], requires_grad=True)
         target = torch.tensor([[4.0]])
         output = gl(input_a, input_b, target)
-        torch.testing.assert_equal(output, target)
+        torch.testing.assert_close(output, target)
 
 
 if __name__ == "__main__":

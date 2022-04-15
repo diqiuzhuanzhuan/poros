@@ -1,3 +1,4 @@
+.vscode
 .idea
 __pycache__
 build/
@@ -8,13 +9,7 @@ output
 export
 *.pyc
 text
-siamese_data
-poros/unilmv2/pretraining_data
 poros/unilmv2/*data
 .vscode
 *.log
 .DS_Store
-*.zip
-poros/unilmv2/test_data/*
-poros/unilmv2/test_data/pretraining_data
-pretraining_data
