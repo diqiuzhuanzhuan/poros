@@ -2,9 +2,7 @@
 # author: Feynman
 # email: diqiuzhuanzhuan@gmail.com
 
-from cProfile import label
 from collections import defaultdict
-from turtle import shape
 import torch
 from torch.utils.data import Dataset
 import random
@@ -88,8 +86,6 @@ class CoNLLReader(Dataset):
                     tree.add(Interval(start_index, end_index)) 
         for interval in sorted(tree.items()):
             entity = sentence[interval.begin: interval.end+1]
-            if entity in stop_words:
-                continue
             entity_index_begin = sentence[0:interval.begin].count(" ")
             entity_index = [entity_index_begin+i for i in range(entity.count(" ")+1)]
             for i in entity_index:
