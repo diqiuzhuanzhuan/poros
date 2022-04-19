@@ -32,7 +32,7 @@ class GravityLoss(torch.nn.modules.loss._Loss):
             n = input_v.shape[0]
         else:
             m = n = 1
-        loss = 1.0 / (m*n) * torch.matrix_power(torch.matmul(input_u, input_v.t()), 2)
+        loss = 1.0 / (m*n) * torch.sum(torch.matmul(input_u.t(), input_u) * torch.matmul(input_v.t(), input_v))
         return loss
 
 

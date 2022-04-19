@@ -12,9 +12,9 @@ if __name__ == "__main__":
     train_data = np.random.random_integers(0, 1, size=[10, 4])
     train_data = np.float32(train_data)
     cfdm = dataman.CFDataModule([train_data])
-    model = modeling.CFModel(10, 4, 10, learning_rate=0.1)
+    model = modeling.CFModel(10, 4, 10, learning_rate=0.1, lambda_gravity=0.2)
     trainer = pl.Trainer(
-        max_epochs=1000,
+        max_epochs=2000,
         progress_bar_refresh_rate=5,
         gpus=AVAIL_GPUS,
         log_every_n_steps=1,
