@@ -33,3 +33,17 @@ def save_model(trainer: pl.Trainer, out_dir, model_name='', timestamp=None):
             best_checkpoint = os.path.join(out_dir, file)
             break
     return outfile, best_checkpoint
+
+    
+def write_eval_performance(eval_performance, out_file):
+    outstr = ''
+    added_keys = set()
+    for out_ in eval_performance:
+        for k in out_:
+            if k in added_keys or k in ['results', 'predictions']:
+                continue
+            outstr = outstr + '{}\t{}\n'.format(k, out_[k])
+            added_keys.add(k)
+
+    open(out_file, 'wt').write(outstr)
+    logging.info('Finished writing evaluation performance for {}'.format(out_file))
