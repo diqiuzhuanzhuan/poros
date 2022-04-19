@@ -13,3 +13,4 @@ poros/unilmv2/*data
 .vscode
 *.log
 .DS_Store
+lightning_logs
