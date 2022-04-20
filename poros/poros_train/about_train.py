@@ -17,6 +17,13 @@ def wait_gc(wait=5):
         count += 1
 
 
+def load_model(model_class: pl.LightningModule, model_file, stage='test', **kwargs):
+    hparams_file = model_file[:model_file.rindex('checkpoints/')] + '/hparams.yaml'
+    model = model_class.load_from_checkpoint(model_file, hparams_file=hparams_file, stage=stage, **kwargs)
+    model.stage = stage
+    return model
+
+
 def save_model(trainer: pl.Trainer, out_dir, model_name='', timestamp=None):
     out_dir = out_dir + '/lightning_logs/version_' + str(trainer.logger.version) + '/checkpoints/'
     if timestamp is None:
