@@ -14,17 +14,17 @@ class GravityLoss(torch.nn.modules.loss._Loss):
     def __init__(self, size_average=None, reduce=None, reduction: str = 'mean') -> None:
         super(GravityLoss, self).__init__(size_average, reduce, reduction)
 
-    def forward(self, input_u: torch.Tensor, input_v: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_u: torch.Tensor, input_v: torch.Tensor) -> torch.Tensor:
         """
         :param input_v:
         :param input_u:
         :param target:
         :return:
         """
-        if torch.Size([input_u.shape[0], input_v.shape[0]]) != target.size():
+        if input_u.shape[1] != input_v.shape[1]:
             raise ValueError(
-                "Using a target size ({}) that is different to the input size ({}) is deprecated. "
-                "Please ensure they have the same size.".format(target.size(), [input_u.shape[0] * input_v.shape[0]])
+                "input_u embedding dimension {} is not equal to input_u embedding dimension {} "
+                "Please ensure they have the same embedding dimension.".format(input_u.shape[1], input_u.shape[1])
             )
 
         if self.reduction == 'mean':

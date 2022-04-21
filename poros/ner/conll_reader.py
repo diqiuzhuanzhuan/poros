@@ -10,7 +10,7 @@ from transformers import AutoTokenizer, LukeTokenizer
 import copy
 import ahocorasick
 from intervaltree import IntervalTree, Interval
-from .reader_utils import get_ner_reader, extract_spans, _assign_ner_tags
+from poros.ner.reader_utils import get_ner_reader, extract_spans, _assign_ner_tags
 import os
 import itertools
 import numpy as np

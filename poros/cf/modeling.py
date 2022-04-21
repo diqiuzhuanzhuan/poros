@@ -47,7 +47,7 @@ class CFModel(pl.LightningModule):
     def training_step(self, target_matrix: torch.Tensor, idx):
         y = torch.matmul(self.user_embedding.weight, self.item_embedding.weight.t())
         mse_loss = self.mse_loss(y, target_matrix)
-        gravity_loss = self.gravity_loss(self.user_embedding.weight, self.item_embedding.weight, torch.squeeze(target_matrix, 0))
+        gravity_loss = self.gravity_loss(self.user_embedding.weight, self.item_embedding.weight)
         regular_loss = self.regular_loss(self.user_embedding.weight, self.item_embedding.weight)
         loss = mse_loss + self.lambda_gravity * gravity_loss + self.lambda_regular * regular_loss
         self.log("loss", loss, prog_bar=True)
