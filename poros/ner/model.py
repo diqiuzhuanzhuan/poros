@@ -301,7 +301,7 @@ class NERBaseAnnotator(pl.LightningModule):
             else:
                 crf_token_mask = (tags != -100) & token_mask
             """
-            crf_token_mask = torch.empty(size=tags.size(), dtype=torch.bool).fill_(False)
+            crf_token_mask = torch.empty(size=tags.size(), dtype=torch.bool).fill_(False).to(self.device)
             for i, tag_len in enumerate(tag_lens):
                 crf_token_mask[i, :tag_len] = True
             loss = -self.crf_layer(token_scores, tags, crf_token_mask) / float(batch_size)
