@@ -24,8 +24,8 @@ def load_model(model_class: pl.LightningModule, model_file, stage='test', **kwar
     return model
 
 
-def save_model(trainer: pl.Trainer, out_dir, model_name='', timestamp=None):
-    out_dir = out_dir + '/lightning_logs/version_' + str(trainer.logger.version) + '/checkpoints/'
+def save_model(trainer: pl.Trainer, default_root_dir="", model_name='', timestamp=None):
+    out_dir = os.path.join(default_root_dir, 'lightning_logs/version_' + str(trainer.logger.version),  'checkpoints')
     if timestamp is None:
         timestamp = time.time()
     os.makedirs(out_dir, exist_ok=True)
