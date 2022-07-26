@@ -14,7 +14,7 @@ class BiaffineLayer(torch.nn.Module):
             in_size + int(bias_x), out_size, in_size + int(bias_y)))
         torch.nn.init.normal_(self.U, mean=0, std=0.1)
 
-    def forward(self, x, y):
+    def forward(self, x: torch.Tensor, y: torch.Tensor):
         """_summary_
 
         Args:
