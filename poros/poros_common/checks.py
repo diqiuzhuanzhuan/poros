@@ -99,37 +99,3 @@ def parse_cuda_device(cuda_device: Union[str, int, List[int]]) -> int:
     else:
         # TODO(brendanr): Determine why mypy can't tell that this matches the Union.
         return int(cuda_device)  # type: ignore
-
-
-def check_for_gpu(device: Union[int, torch.device, List[Union[int, torch.device]]]):
-    if isinstance(device, list):
-        for did in device:
-            check_for_gpu(did)
-    elif device is None:
-        return
-    else:
-        from allennlp.common.util import int_to_device
-
-        device = int_to_device(device)
-        if device != torch.device("cpu"):
-            num_devices_available = cuda.device_count()
-            if num_devices_available == 0:
-                raise ConfigurationError(
-                    "Experiment specified a GPU but none is available;"
-                    " if you want to run on CPU use the override"
-                    " 'trainer.cuda_device=-1' in the json config file."
-                )
-            elif device.index >= num_devices_available:
-                raise ConfigurationError(
-                    f"Experiment specified GPU device {device.index}"
-                    f" but there are only {num_devices_available} devices "
-                    f" available."
-                )
-
-
-def check_for_java() -> bool:
-    try:
-        java_version = subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT)
-        return "version" in java_version.decode()
-    except FileNotFoundError:
-        return False

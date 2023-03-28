@@ -15,7 +15,7 @@ with codecs.open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="poros",
-    version="0.0.69",
+    version="0.0.71",
     author="Feynman",
     author_email="diqiuzhuanzhuan@gmail.com",
     description="some useful code",
@@ -24,7 +24,7 @@ setuptools.setup(
     url="https://github.com/diqiuzhuanzhuan/poros",
     packages=setuptools.find_packages(),
     install_requires=[
-        "pytorch_ligntning",
+        "pytorch_lightning",
 	    "transformers>=4.13.0",
     ],
     classifiers=[

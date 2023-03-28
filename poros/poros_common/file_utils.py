@@ -572,7 +572,7 @@ def inspect_cache(patterns: List[str] = None, cache_dir: Union[str, Path] = None
     """
     Print out useful information about the cache directory.
     """
-    from allennlp.common.util import format_timedelta, format_size
+    from poros.poros_common.util import format_timedelta, format_size
 
     cache_dir = os.path.expanduser(cache_dir or CACHE_DIRECTORY)
 
