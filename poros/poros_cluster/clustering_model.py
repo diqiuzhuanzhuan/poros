@@ -276,7 +276,6 @@ class IntentClusteringContext:
     """
     dataset: List[AnyStr]
     labels: List[AnyStr] | List[int]
-    intent_turn_ids: Set[str]
     # output intermediate clustering results/metadata here
     output_dir: Path = None
 
