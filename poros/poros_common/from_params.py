@@ -543,7 +543,7 @@ class FromParams:
         constructor (because you inspect `__init__`, but call `cls()`).
         """
 
-        from allennlp.common.registrable import Registrable  # import here to avoid circular imports
+        from poros.poros_common.registrable import Registrable  # import here to avoid circular imports
 
         logger.debug(
             f"instantiating class {cls} from params {getattr(params, 'params', params)} "
