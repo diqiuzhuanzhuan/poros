@@ -8,7 +8,7 @@ from importlib.resources import path
 from xml.dom import minicompat
 from poros.poros_common.registrable import Registrable
 from poros.poros_common.params import Params
-from typing import Dict, List, Set, Any, Optional
+from typing import Dict, List, Set, Any, Optional, AnyStr
 from dataclasses import dataclass, field
 from pathlib import Path
 from numpy import ndarray
@@ -274,8 +274,8 @@ class IntentClusteringContext:
     Dialogue clustering context consisting of a list of dialogues and set of target turn IDs to be labeled
     with clusters.
     """
-
-    dataset = None
+    dataset: List[AnyStr]
+    labels: List[AnyStr] | List[int]
     intent_turn_ids: Set[str]
     # output intermediate clustering results/metadata here
     output_dir: Path = None
@@ -314,14 +314,10 @@ class BaselineIntentClusteringModel(IntentClusteringModel):
     def cluster_intents(self, context: IntentClusteringContext) -> Dict[str, str]:
         # collect utterances corresponding to intents
         utterances = []
-        turn_ids = []
         labels = set()
-        for dialogue in context.dataset.dialogues:
-            for turn in dialogue.turns:
-                if turn.turn_id in context.intent_turn_ids:
-                    utterances.append(turn.utterance)
-                    turn_ids.append(turn.turn_id)
-                    labels.update(turn.intents)
+        for utterance, label in zip(context.dataset, context.labels):
+            utterances.append(utterance)
+            labels.update(label)
 
         # compute sentence embeddings
         features = self._embedding_model.encode(utterances)
@@ -332,7 +328,7 @@ class BaselineIntentClusteringModel(IntentClusteringModel):
         )
         result = self._clustering_algorithm.cluster(context)
         # map turn IDs to cluster labels
-        return {turn_id: str(label) for turn_id, label in zip(turn_ids, result.clusters)}
+        return [str(label) for turn_id, label in result.clusters]
         
         
 if __name__ == "__main__":
