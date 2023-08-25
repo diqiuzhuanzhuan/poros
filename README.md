@@ -43,7 +43,33 @@ from poros.poros_loss import GravityLoss
 
 # clustering 
 ```python
-from poros.poros_cluster import *
+from poros.poros_common.params import Params
+
+# some cluster algorithm, graph cluster
+>>> sentence_embedding_params = Params({
+        'type': 'sentence_transformers_model', 
+        'model_name_or_path': 'albert-base-v1'
+        })
+    # it indicates that: sentence_embedding_model = SentenceEmbeddingModel.from_params(params=sentence_embedding_params)
+>>> clustering_algorithm_params = Params({
+        'type': 'graph_based_clustering',
+        'similarity_algorithm_name': 'cosine',
+        'similarity_algorithm_params': None,
+        'community_detection_name': 'louvain',
+        'community_detection_params': {
+            'weight': 'weight', 
+            'resolution': 0.95, 
+            'randomize': False
+        } 
+        })
+
+>>> intent_clustering_params = Params({
+        'type': 'baseline_intent_clustering_model',
+        'clustering_algorithm': clustering_algorithm_params,
+        'embedding_model': sentence_embedding_params
+    })
+
+>>> intent_clustering_model = IntentClusteringModel.from_params(params=intent_clustering_params)
 ```
 
 # Thanks
