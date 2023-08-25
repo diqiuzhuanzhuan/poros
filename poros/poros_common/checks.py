@@ -1,6 +1,6 @@
 """
 Functions and exceptions for checking that
-AllenNLP and its models are configured correctly.
+ and its models are configured correctly.
 """
 import logging
 import re
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigurationError(Exception):
     """
-    The exception raised by any AllenNLP object when it's misconfigured
+    The exception raised by any object when it's misconfigured
     (e.g. missing properties, invalid properties, unknown properties).
     """
 

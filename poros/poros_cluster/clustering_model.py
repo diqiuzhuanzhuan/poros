@@ -154,7 +154,7 @@ class GraphBasedClusetring(ClusteringAlgorithm):
         g.add_nodes_from(range(m))
         for i in range(m):
             for j in range(i):
-                g.add_edge(i, j, weight=np.exp(-matrix[i][j]+3))
+                g.add_edge(i, j, weight=np.exp(-matrix[i][j]+3)) ## scale up
                 #g.add_edge(i, j, weight=matrix[i][j])
         return g
     
@@ -275,10 +275,9 @@ class IntentClusteringContext:
     with clusters.
     """
     dataset: List[AnyStr]
-    labels: List[AnyStr] | List[int]
+    labels: List[AnyStr]
     # output intermediate clustering results/metadata here
     output_dir: Path = None
-
 
 class IntentClusteringModel(Registrable):
 
@@ -316,7 +315,7 @@ class BaselineIntentClusteringModel(IntentClusteringModel):
         labels = set()
         for utterance, label in zip(context.dataset, context.labels):
             utterances.append(utterance)
-            labels.update(label)
+            labels.update({label})
 
         # compute sentence embeddings
         features = self._embedding_model.encode(utterances)
@@ -327,7 +326,7 @@ class BaselineIntentClusteringModel(IntentClusteringModel):
         )
         result = self._clustering_algorithm.cluster(context)
         # map turn IDs to cluster labels
-        return [str(label) for turn_id, label in result.clusters]
+        return [str(label) for label in result.clusters]
         
         
 if __name__ == "__main__":
@@ -344,28 +343,29 @@ if __name__ == "__main__":
         'community_detection_name': 'louvain',
         'community_detection_params': {
             'weight': 'weight', 
-            'resolution': 1., 
+            'resolution': 0.95, 
             'randomize': False
         } 
     })
+    '''
     clustering_algorithm_params = Params({
         'type': 'density_based_clustering',
         'clustering_algorithm_name': 'kmeans',
         'clustering_algorithm_params': {
-            'n_cluster': 10
+            'n_init': 2
         }
     })
-
     clustering_algorithm_params = Params({
-        'type': 'ensemble_clustering'
+        'type': 'ensemble_clustering',
+        'num_kemans': 500
         }
     )
 
     clustering_algorithm_params = Params({
         'type': 'ensemble_clustering_from_result',
         'result_path': '/Users/malong/github/dstc11/TEXTOIR/open_intent_discovery/results'
-        
     })
+    '''
 
     # it indicates that: clustering_algorithm = ClusteringAlgorithm.from_params(params=clustering_algorithm_params)
 
@@ -376,4 +376,11 @@ if __name__ == "__main__":
     })
 
     intent_clustering_model = IntentClusteringModel.from_params(params=intent_clustering_params)
+    cluster_context = IntentClusteringContext(
+        dataset=['你好吗'] * 150 + ['我很不好'] * 150,
+        labels=[1] * 150 + [2] * 150,
+        output_dir=Path(".")
+    )
+    labels = intent_clustering_model.cluster_intents(cluster_context)
+    print(labels)
     

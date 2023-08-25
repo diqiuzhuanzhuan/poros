@@ -2,7 +2,4 @@
 # author: Feynman
 # email: diqiuzhuanzhuan@gmail.com
 
-import torch
-
-class MmoeLayer(object):
-    pass
+VERSION = "0.0.72"

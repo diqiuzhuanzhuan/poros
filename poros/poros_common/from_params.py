@@ -87,7 +87,7 @@ def is_base_registrable(cls) -> bool:
     Checks whether this is a class that directly inherits from Registrable, or is a subclass of such
     a class.
     """
-    from allennlp.common.registrable import Registrable  # import here to avoid circular imports
+    from poros.poros_common.registrable import Registrable  # import here to avoid circular imports
 
     if not issubclass(cls, Registrable):
         return False
@@ -268,7 +268,6 @@ def pop_and_construct_arg(
     `inspect.Parameter` object directly, so that we can handle `Union` types using recursion on
     this method, trying the different annotation types in the union in turn.
     """
-    from allennlp.models.archival import load_archive  # import here to avoid circular imports
 
     # We used `argument_name` as the method argument to avoid conflicts with 'name' being a key in
     # `extras`, which isn't _that_ unlikely.  Now that we are inside the method, we can switch back
@@ -288,25 +287,6 @@ def pop_and_construct_arg(
                 "and if it is different from what we get from **extras, you might "
                 "get unexpected behavior."
             )
-    # Next case is when argument should be loaded from pretrained archive.
-    elif (
-        name in params
-        and isinstance(params.get(name), Params)
-        and "_pretrained" in params.get(name)
-    ):
-        load_module_params = params.pop(name).pop("_pretrained")
-        archive_file = load_module_params.pop("archive_file")
-        module_path = load_module_params.pop("module_path")
-        freeze = load_module_params.pop("freeze", True)
-        archive = load_archive(archive_file)
-        result = archive.extract_module(module_path, freeze)
-        if not isinstance(result, annotation):
-            raise ConfigurationError(
-                f"The module from model at {archive_file} at path {module_path} "
-                f"was expected of type {annotation} but is of type {type(result)}"
-            )
-        return result
-
     popped_params = params.pop(name, default) if default != _NO_DEFAULT else params.pop(name)
     if popped_params is None:
         return None

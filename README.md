@@ -14,14 +14,13 @@ cd poros
 python setup install
 ```
 
-
-Some code is from other people, and some is from me.
+Some code is created by myself, and some code is inspired by others,  such as allennlp etc.
 
 # poros_chars
-Provide a list of small functions
+Provide a set of small functions
 
 usage:
-- convert chinese words into arabic number:
+- convert Chinese words into Arabic numbers:
 ```python
 from poros.poros_chars import chinese_to_arabic
 >>> print(chinese_to_arabic.NumberAdapter.convert("四千三百万"))
@@ -29,8 +28,7 @@ from poros.poros_chars import chinese_to_arabic
 
 ```
 # poros_loss
-Provide some loss functions, such as gravity loss, dice loss
-usage:
+Provide some loss functions, such as gravity loss, and dice loss usage:
 - 
 ```python
 from poros.poros_loss import GravityLoss
@@ -41,6 +39,11 @@ from poros.poros_loss import GravityLoss
 >>> target = torch.tensor([[4.0]])
 >>> output = gl(input_a, input_b, target)
 >>> torch.testing.assert_close(output, target)
+```
+
+# clustering 
+```python
+from poros.poros_cluster import *
 ```
 
 # Thanks

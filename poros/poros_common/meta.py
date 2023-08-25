@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Union
 
-from allennlp.version import VERSION
+from poros.version import VERSION
 
 
 logger = logging.getLogger(__name__)
