@@ -45,12 +45,12 @@ from poros.poros_loss import GravityLoss
 ```python
 from poros.poros_common.params import Params
 
-# some cluster algorithm, graph cluster
+# at first, choose an embedding algorithm
 >>> sentence_embedding_params = Params({
         'type': 'sentence_transformers_model', 
         'model_name_or_path': 'albert-base-v1'
         })
-    # it indicates that: sentence_embedding_model = SentenceEmbeddingModel.from_params(params=sentence_embedding_params)
+# secondly, specify which clustering algorithm you want to conduct
 >>> clustering_algorithm_params = Params({
         'type': 'graph_based_clustering',
         'similarity_algorithm_name': 'cosine',
@@ -62,7 +62,7 @@ from poros.poros_common.params import Params
             'randomize': False
         } 
         })
-
+# finally, build your clustering model
 >>> intent_clustering_params = Params({
         'type': 'baseline_intent_clustering_model',
         'clustering_algorithm': clustering_algorithm_params,
