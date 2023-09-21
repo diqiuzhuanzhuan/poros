@@ -357,13 +357,13 @@ if __name__ == "__main__":
     })
     clustering_algorithm_params = Params({
         'type': 'ensemble_clustering',
-        'num_kemans': 500
+        'num_kemans': 100
         }
     )
 
     clustering_algorithm_params = Params({
         'type': 'ensemble_clustering_from_result',
-        'result_path': '/Users/malong/github/dstc11/TEXTOIR/open_intent_discovery/results'
+        'result_path': './results'
     })
     '''
 

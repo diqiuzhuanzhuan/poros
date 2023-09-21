@@ -25,7 +25,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     install_requires=[
         "pytorch_lightning",
-	    "transformers>=4.13.0",
+	    "transformers>=4.28.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
